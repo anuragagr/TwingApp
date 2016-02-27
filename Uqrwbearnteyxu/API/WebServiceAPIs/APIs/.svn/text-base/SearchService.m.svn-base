@@ -1,0 +1,97 @@
+//
+//  SearchService.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 19/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "SearchService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+#define kTimeout 15
+
+#define searchURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/search/quick-search"]
+
+#define searchURLSearchword @"searchword"
+
+#define searchURLPostCp @"cp"
+#define searchURLPostLimit @"limit"
+
+
+@implementation SearchService
+
++ (SearchService *)sharedInstance
+{
+    // 1
+    static SearchService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[SearchService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getSearchResult:(NSString *)searchWord andcCP:(int)pageNo andLimit:(int)limit{
+    NSURL *url=[NSURL URLWithString:searchURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",searchWord] forKey:searchURLSearchword];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:searchURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:searchURLPostLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSearch:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        
+    }
+}
+
+
+@end

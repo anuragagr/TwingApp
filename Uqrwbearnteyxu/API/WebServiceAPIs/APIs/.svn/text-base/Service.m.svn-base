@@ -1,0 +1,115 @@
+//
+//  Service.m
+//  VideoChat
+//
+//  Created by Rahul N. Mane on 6/13/13.
+//  Copyright (c) 2013 Rahul N. Mane. All rights reserved.
+//
+
+#import "Service.h"
+#define kTimeout 25
+#import "Parser.h"
+#import "CookieManager.h"
+
+@implementation Service
+
+
+
+
+-(void)request:(NSURL *)url
+{
+    self.request = [[ASIHTTPRequest alloc] initWithURL:url];
+    
+    #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_4_0
+    [self.request setShouldContinueWhenAppEntersBackground:YES];
+    #endif
+    
+    
+    [self.request setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.request setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.request setDelegate:self];
+    [self.request setTimeOutSeconds:kTimeout];
+    
+    [self.request setUseCookiePersistence:NO];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    
+    [self.request startAsynchronous];
+    self.request.tag=self.tag;
+    
+ 
+    //NSLog(@"Request fired");
+    
+}
+
+-(void)requestForLogin:(NSURL *)url andUserName:(NSString *)userName andPassword:(NSString *)password
+{
+    /*
+    self.request = [[ASIFormDataRequest alloc] initWithURL:url];
+    
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_4_0
+    [self.request setShouldContinueWhenAppEntersBackground:YES];
+#endif
+
+    [self.request setRequestMethod:@"POST"];
+    
+   // [self.request addBasicAuthenticationHeaderWithUsername:userName andPassword:password];
+    [self.request setValue:userName forKey:@"username"];
+    [self.request setValue:password forKey:@"password"];
+   // [self.request setValue:@"asas" forKey:@"device_id"];
+
+    [self.request setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.request setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.request setDelegate:self];
+    [self.request setTimeOutSeconds:kTimeout];
+    [self.request startAsynchronous];
+    self.request.tag=self.tag;
+    
+    NSLog(@"Login Request fired");
+    
+    */
+    
+    
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:userName forKey:@"username"];
+    [self.requestform setPostValue:password forKey:@"password"];
+    [self.requestform setPostValue:@"asas" forKey:@"device_id"];
+    
+    self.requestform.tag=self.tag;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    
+    [self.requestform startAsynchronous];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+
+    
+}
+
+
+
+
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+  //  NSLog(@"failed ");
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+ 
+    //NSLog(@"succes ");
+    // NSString *responseString = [theRequest responseString];
+    
+    // Use when fetching binary data
+    NSData *respons1eData = [theRequest responseData];
+   // [self.delegate request:self didSucceedWithArray:respons1eData];
+}
+
+@end

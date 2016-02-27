@@ -1,0 +1,3144 @@
+//
+//  Parser.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 10/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "Parser.h"
+#import "UserModel.h"
+#import "ErrorCodes.h"
+#import "RequestModel.h"
+#import "EventModel.h"
+#import "EventFilterModel.h"
+#import "DropDownModel.h"
+#import "CookieManager.h"
+#import "SearchResultModel.h"
+#import "StaticContentModel.h"
+#import "PhotoModel.h"
+#import "AlbumModel.h"
+#import "VideoModel.h"
+#import "CommentModel.h"
+#import "BlogModel.h"
+#import "NSNull+JSON.h"
+#import "TrackModel.h"
+#import "LiveSessionModel.h"
+#import "ActiveLiveSessionChatModel.h"
+#import "NegotiationChatModel.h"
+#import "PaymentModel.h"
+
+
+#define jsonError @"Oops... something went wrong !!!"
+
+@implementation Parser
+
+
+
+#pragma mark - User Model
+
+-(NSMutableArray *)parseLogOutdata:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            //NSDictionary *data=[json valueForKey:@"data"];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseLoginData:(NSData *)responseData andError:(NSError **)error{
+    
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSDictionary *userData=[data valueForKey:@"user"];
+            UserModel *model=[[UserModel alloc]init];
+            
+            model.userID=[[userData valueForKey:@"dj_id"] intValue];
+            model.strAddress=[userData valueForKey:@"address"];
+            model.strCity_b=[userData valueForKey:@"city_b"];
+            model.strCountry_name=[userData valueForKey:@"country_name"];
+            model.strDj_email=[userData valueForKey:@"dj_email"];
+            model.strDj_imageURL=[userData valueForKey:@"dj_image"];
+            model.strDj_name=[userData valueForKey:@"dj_name"];
+            model.strUser_type=[userData valueForKey:@"user_type"];
+            model.strDj_OriginalImageURL=[userData valueForKey:@"dj_image_original"];
+
+            model.strDJ_Bio=[userData valueForKey:@"dj_bio"];
+            model.isProvider=[[userData valueForKey:@"is_provider"] intValue];
+            model.isCustomer=[[userData valueForKey:@"is_customer"] intValue];
+            model.intLikeCount=[[userData valueForKey:@"like"] intValue];
+            model.intDislikeCount=[[userData valueForKey:@"unlike"] intValue];
+
+            model.intPendingRequests=[[userData valueForKey:@"pendingRequests"] intValue];
+            
+            CookieManager *p=[[CookieManager alloc]init];
+            
+            [p setCookees:[userData valueForKey:@"session_id"]];
+            [p setUserId:[userData valueForKey:@"dj_id"]];
+            [p setPendingRequestCount:[NSString stringWithFormat:@"%d",model.intPendingRequests]];
+            
+            model.intDislikeCount=[[userData valueForKey:@"unlike"] intValue];
+            
+
+            
+            [arrayToReturn addObject:model];
+            
+            
+            NSDictionary *dropDownData=[data valueForKey:@"dropDown"];
+            DropDownModel *dropDownModel=[[DropDownModel alloc]init];
+            
+            dropDownModel.dictCountryList=[dropDownData valueForKey:@"country_list"];
+            dropDownModel.dictSortedByList=[dropDownData valueForKey:@"sort_event_by"];
+            
+            dropDownModel.dictEventStatusList=[dropDownData valueForKey:@"event_status"];
+            dropDownModel.dictEventTypeList=[dropDownData valueForKey:@"event_types"];
+            dropDownModel.arrayTimeZone=[dropDownData valueForKey:@"time_zone"];
+
+            dropDownModel.dictArtistGenderList=[dropDownData valueForKey:@"GenderList"];
+            dropDownModel.dictArtistType=[dropDownData valueForKey:@"artistTypes"];
+            dropDownModel.dictArtistGenreList=[dropDownData valueForKey:@"genreList"];
+            dropDownModel.dictArtistSortedByList=[dropDownData valueForKey:@"sortBy_artist"];
+            dropDownModel.dictArtistSubType=[dropDownData valueForKey:@"subTypeList"];
+            
+            dropDownModel.dictUploadVideoTypes=[dropDownData valueForKey:@"video_types"];
+            
+            [arrayToReturn addObject:dropDownModel];
+            
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+
+-(NSMutableArray *)parseUserProfile:(NSData *)responseData andError:(NSError **)error{
+    
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+
+            NSDictionary *userData=[data valueForKey:@"user"];
+
+            UserModel *model=[[UserModel alloc]init];
+            
+            model.userID=[[userData valueForKey:@"dj_id"] intValue];
+            model.strAddress=[userData valueForKey:@"address"];
+            model.strCity_b=[userData valueForKey:@"city_b"];
+            model.strCountry_name=[userData valueForKey:@"country_name"];
+            model.strDj_email=[userData valueForKey:@"dj_email"];
+            model.strDj_imageURL=[userData valueForKey:@"dj_image"];
+            model.strDj_name=[userData valueForKey:@"dj_name"];
+            model.strUser_type=[userData valueForKey:@"user_type"];
+            model.intLikeCount=[[userData valueForKey:@"like"] intValue];
+            model.intDislikeCount=[[userData valueForKey:@"unlike"] intValue];
+            model.strRate=[userData valueForKey:@"rate"];
+            model.strDj_OriginalImageURL=[userData valueForKey:@"dj_image_original"];
+
+
+            model.strDJ_Bio=[userData valueForKey:@"dj_bio"];
+           
+            [arrayToReturn addObject:model];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Request model
+
+
+-(NSMutableArray *)parseReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSDictionary *selfData=[data valueForKey:@"data"];
+            
+            RequestModel *model=[[RequestModel alloc]init];
+            
+            model.arrayOfApproved=[selfData valueForKey:@"approved"];
+            model.arrayOfExpired=[selfData valueForKey:@"expired"];
+            model.arrayOfPaid=[selfData valueForKey:@"paid"];
+            model.arrayOfPending=[selfData valueForKey:@"pending"];
+            model.arrayOfRefused=[selfData valueForKey:@"refused"];
+
+            NSDictionary *packedData=[data valueForKey:@"packdata"];
+
+            
+            model.arrayOfPackedApproved=[packedData valueForKey:@"approved"];
+            model.arrayOfPackedExpired=[packedData valueForKey:@"expired"];
+            model.arrayOfPackedPaid=[packedData valueForKey:@"paid"];
+            model.arrayOfPackedPending=[packedData valueForKey:@"pending"];
+
+           // model.arrayOfTimeZones=[data valueForKey:@"timezoneList"];
+          
+            [arrayToReturn addObject:model];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+
+            int errorCode=[[errorDict valueForKey:@"errorCode"]intValue];
+            if(errorCode==401){  // as per errorcode on server
+                NSMutableDictionary* details = [NSMutableDictionary dictionary];
+                [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+                *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserSessionIDServerError userInfo:details];
+            }
+            else{
+                NSMutableDictionary* details = [NSMutableDictionary dictionary];
+                [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+                *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+                
+            }
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseFutureReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfFutureRequest=[data valueForKey:@"futureList"];
+            
+            NSMutableArray *arrayOfNormalRequest=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<arrayOfFutureRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                                model.isPackedRequest=NO;
+                NSDictionary *requestData=[arrayOfFutureRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"price"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+              
+                /*model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                 model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+
+                 model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                 model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                */
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"futureList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                
+                [arrayOfNormalRequest addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayOfNormalRequest];
+            
+            NSMutableArray *arrayOfPackRequest=[[NSMutableArray alloc]init];
+
+            NSMutableArray *arrayOfPackedRequest=[data valueForKey:@"futurePackList"];
+            
+            for(int k=0;k<arrayOfPackedRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                model.isPackedRequest=YES;
+                NSDictionary *requestData=[arrayOfPackedRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+               
+                /*model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.strCustomerPrice=[requestData valueForKey:@"customer_price"];
+                model.strProviderPrice=[requestData valueForKey:@"provider_price"];
+                
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                */
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"futurePackList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                [arrayOfPackRequest addObject:model];
+            }
+
+            [arrayToReturn addObject:arrayOfPackRequest];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseOnDateReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfNormalRequest=[data valueForKey:@"todayList"];
+            
+            NSMutableArray *arrayN=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<arrayOfNormalRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                model.isPackedRequest=NO;
+
+                NSDictionary *requestData=[arrayOfNormalRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"price"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                */
+                
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"todayList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+
+                
+                [arrayN addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayN];
+            
+            
+            NSMutableArray *arrayOfPackRequest=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfPackedRequest=[data valueForKey:@"packList"];
+            
+            for(int k=0;k<arrayOfPackedRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                model.isPackedRequest=YES;
+                NSDictionary *requestData=[arrayOfPackedRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.strCustomerPrice=[requestData valueForKey:@"customer_price"];
+                model.strProviderPrice=[requestData valueForKey:@"provider_price"];
+                
+                 model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                 model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                 
+                */
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+               
+              
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"packList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                [arrayOfPackRequest addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayOfPackRequest];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parseTodayReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfFutureRequest=[data valueForKey:@"todayList"];
+            
+            NSMutableArray *arrayN=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<arrayOfFutureRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                NSDictionary *requestData=[arrayOfFutureRequest objectAtIndex:k];
+                model.isPackedRequest=NO;
+
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"price"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+               
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                */
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"todayList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+
+                
+                [arrayN addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayN];
+            
+            
+            NSMutableArray *arrayOfPackRequest=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfPackedRequest=[data valueForKey:@"todayPackList"];
+            
+            for(int k=0;k<arrayOfPackedRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                model.isPackedRequest=YES;
+                NSDictionary *requestData=[arrayOfPackedRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.strCustomerPrice=[requestData valueForKey:@"customer_price"];
+                model.strProviderPrice=[requestData valueForKey:@"provider_price"];
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+              
+                */
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"todayPackList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                [arrayOfPackRequest addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayOfPackRequest];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseNextWeekReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfNormalRequest=[data valueForKey:@"thisWeekList"];
+            
+            NSMutableArray *arrayN=[[NSMutableArray alloc]init];
+
+            
+            for(int k=0;k<arrayOfNormalRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                NSDictionary *requestData=[arrayOfNormalRequest objectAtIndex:k];
+                model.isPackedRequest=NO;
+
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"price"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+                */
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"thisWeekList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+
+                
+                
+                [arrayN addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayN];
+            
+            NSMutableArray *arrayOfPackRequest=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfPackedRequest=[data valueForKey:@"todayPackList"];
+            
+            for(int k=0;k<arrayOfPackedRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                model.isPackedRequest=YES;
+                NSDictionary *requestData=[arrayOfPackedRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.strCustomerPrice=[requestData valueForKey:@"customer_price"];
+                model.strProviderPrice=[requestData valueForKey:@"provider_price"];
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+              */
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"thisWeekPackList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+
+                
+                [arrayOfPackRequest addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayOfPackRequest];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parsePackedReuests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfFutureRequest=[data valueForKey:@"packList"];
+            
+            NSMutableArray *arrayP=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<arrayOfFutureRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                NSDictionary *requestData=[arrayOfFutureRequest objectAtIndex:k];
+                model.isPackedRequest=YES;
+
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+                
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                
+                /*
+                model.strCustomerImageURL=[requestData valueForKey:@"customer_image"];
+                model.strCustomerName=[requestData valueForKey:@"customer_name"];
+                
+                model.strProviderImageURL=[requestData valueForKey:@"provider_image"];
+                model.strProviderName=[requestData valueForKey:@"provider_name"];
+                
+                model.strCustomerPrice=[requestData valueForKey:@"customer_price"];
+                model.strProviderPrice=[requestData valueForKey:@"provider_price"];
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                model.providerProposalId=[[requestData valueForKey:@"provider_proposal"] intValue];
+                model.customerProposalId=[[requestData valueForKey:@"customer_proposal"] intValue];
+              */
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"packList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+
+                
+                [arrayP addObject:model];
+            }
+            
+            [arrayToReturn addObject:[[NSMutableArray alloc]init]];
+            [arrayToReturn addObject:arrayP];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseAcceptReuest:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            [arrayToReturn addObject:data];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseCancelReuest:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            [arrayToReturn addObject:data];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Events
+
+-(NSMutableArray *)parseEvents:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            
+            
+            
+//            EventFilterModel *filterModel=[[EventFilterModel alloc]init];
+//            filterModel.dictCountryList=[data valueForKey:@"countryList"];
+//            filterModel.arrayStatusList=[data valueForKey:@"statusList"];
+//            filterModel.arrayTypeList=[data valueForKey:@"typeList"];
+//            filterModel.dictSortedByList=[data valueForKey:@"sortByListApi"];
+//
+//           // [arrayToReturn addObject:filterModel];
+
+            NSMutableArray *eventArray=[data valueForKey:@"eventList"];
+            
+            for(int k=0;k<[eventArray count];k++){
+                NSDictionary *eventdata=[eventArray objectAtIndex:k];
+
+                EventModel *model=[[EventModel alloc]init];
+                
+                   model.eventID=[[eventdata valueForKey:@"id"]intValue];
+                model.strEvent_type_name=[eventdata valueForKey:@"event_type_name"];
+                model.strEventImageURL=[eventdata valueForKey:@"timage"];
+                model.strTimestart=[eventdata valueForKey:@"timestart"];
+                model.strTitle=[eventdata valueForKey:@"title"];
+                model.is_Folliowing=[[eventdata valueForKey:@"is_following"]boolValue];
+                 model.is_future=[[eventdata valueForKey:@"is_future"]boolValue];
+                 model.is_live=[[eventdata valueForKey:@"is_live"]boolValue];
+                 model.is_off=[[eventdata valueForKey:@"is_off"]boolValue];
+                model.strVenue=[eventdata valueForKey:@"venue"];
+                model.is_allow_donations=[[eventdata valueForKey:@"is_donatable"]boolValue];
+                model.strDescreption=[eventdata valueForKey:@"description"];
+                model.intBroadcaster_id=[[eventdata valueForKey:@"broadcaster_id"]intValue];
+                model.strHash=[eventdata valueForKey:@"hash"];
+                model.strStreamName=[eventdata valueForKey:@"stream_name"];
+                model.strStreamURL=[eventdata valueForKey:@"hls_streaming_link"];
+                
+                
+                [arrayToReturn addObject:model];
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseGuestEvents:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            
+            DropDownModel *filterModel=[[DropDownModel alloc]init];
+            
+            filterModel.dictCountryList=[data valueForKey:@"countryList"];
+            filterModel.dictEventStatusList=[data valueForKey:@"statusList"];
+            filterModel.dictEventTypeList=[data valueForKey:@"typeList"];
+            filterModel.dictSortedByList=[data valueForKey:@"sort_event_by"];
+            
+            [arrayToReturn addObject:filterModel];
+            
+            NSMutableArray *eventArray=[data valueForKey:@"eventList"];
+            
+            for(int k=0;k<[eventArray count];k++){
+                NSDictionary *eventdata=[eventArray objectAtIndex:k];
+                
+                EventModel *model=[[EventModel alloc]init];
+                
+                model.eventID=[[eventdata valueForKey:@"id"]intValue];
+                model.strEvent_type_name=[eventdata valueForKey:@"event_type_name"];
+                model.strEventImageURL=[eventdata valueForKey:@"timage"];
+                model.strTimestart=[eventdata valueForKey:@"timestart"];
+                model.strTitle=[eventdata valueForKey:@"title"];
+                model.is_Folliowing=[[eventdata valueForKey:@"is_following"]boolValue];
+                model.is_future=[[eventdata valueForKey:@"is_future"]boolValue];
+                model.is_live=[[eventdata valueForKey:@"is_live"]boolValue];
+                model.is_off=[[eventdata valueForKey:@"is_off"]boolValue];
+                model.strVenue=[eventdata valueForKey:@"venue"];
+                model.is_allow_donations=[[eventdata valueForKey:@"is_donatable"]boolValue];
+                model.strDescreption=[eventdata valueForKey:@"description"];
+                model.intBroadcaster_id=[[eventdata valueForKey:@"broadcaster_id"]intValue];
+                model.strHash=[eventdata valueForKey:@"hash"];
+                model.strStreamName=[eventdata valueForKey:@"stream_name"];
+                model.strStreamURL=[eventdata valueForKey:@"hls_streaming_link"];
+
+                
+                [arrayToReturn addObject:model];
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseUpdateGuestUserLocation:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            //NSDictionary *data=[json valueForKey:@"data"];
+            
+            
+            return arrayToReturn;
+            }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+
+-(NSMutableArray *)parseCreateEvents:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+// new
+
+-(NSMutableArray *)parseEventDetail:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"data"];
+            EventModel *eventModel=[[EventModel alloc]init];
+
+            eventModel.donationBackersCount=[[dict valueForKey:@"donationBackersCount"]intValue];
+            eventModel.donationTotal=[[dict valueForKey:@"donationTotal"]integerValue];
+            
+            
+            NSDictionary *broadCasterDict=[dict valueForKey:@"broadcaster"];
+            
+            
+            eventModel.intBroadcaster_id=[[broadCasterDict valueForKey:@"dj_id"]intValue];
+            eventModel.strDjName=[broadCasterDict valueForKey:@"dj_uname"];
+            
+            NSDictionary *eventDict=[dict valueForKey:@"event"];
+
+            
+            eventModel.strAddress=[eventDict valueForKey:@"address"];
+            eventModel.strEventImageURL=[eventDict valueForKey:@"cover"];
+            eventModel.strDescreption=[eventDict valueForKey:@"description"];
+            
+            eventModel.strEventImageURL=[eventDict valueForKey:@"timage"];
+            eventModel.strTimestart=[eventDict valueForKey:@"timestart"];
+            eventModel.strTitle=[eventDict valueForKey:@"title"];
+            eventModel.is_Folliowing=[[eventDict valueForKey:@"is_following"]boolValue];
+            eventModel.is_future=[[eventDict valueForKey:@"is_future"]boolValue];
+            eventModel.is_live=[[eventDict valueForKey:@"is_live"]boolValue];
+            eventModel.is_off=[[eventDict valueForKey:@"is_off"]boolValue];
+            eventModel.strVenue=[eventDict valueForKey:@"venue"];
+            eventModel.is_allow_donations=[[eventDict valueForKey:@"is_donatable"]boolValue];
+            eventModel.strDescreption=[eventDict valueForKey:@"description"];
+            eventModel.intBroadcaster_id=[[eventDict valueForKey:@"broadcaster_id"]intValue];
+            eventModel.strHash=[eventDict valueForKey:@"hash"];
+            
+            NSMutableArray *arrayOfAlbums=[dict valueForKey:@"albums"];
+            
+
+            eventModel.arrayOfAlbumCoverImageURL=[[NSMutableArray alloc]init];
+            
+            for (int k=0;k<arrayOfAlbums.count; k++) {
+                NSDictionary *albumsDic=[arrayOfAlbums objectAtIndex:k];
+                [eventModel.arrayOfAlbumCoverImageURL addObject:[albumsDic valueForKey:@"image_cover"]];
+            }
+            
+            [arrayToReturn addObject:eventModel];
+            
+            return arrayToReturn;
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+
+#pragma mark - Negotiation feature
+
+-(NSMutableArray *)parseConfirmPayment:(NSData *)responseData andError:(NSError **)error{
+    
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+           
+            NSArray *resposeArray=[dict valueForKey:@"response"];
+            
+            for (int k=0; k<resposeArray.count; k++) {
+                NSDictionary *dictOfProp=[resposeArray objectAtIndex:k];
+                
+                PaymentModel *model=[[PaymentModel alloc]init];
+                
+                
+                model.strAmount=[dictOfProp valueForKey:@"amount"];
+                model.intRequestID=[[dictOfProp valueForKey:@"id"]intValue];
+
+                model.strIntent=[dictOfProp valueForKey:@"intent"];
+                model.strPaypalID=[dictOfProp valueForKey:@"txn_id"];
+                model.strRequestType=[dictOfProp valueForKey:@"type"];
+                model.strState=[dictOfProp valueForKey:@"state"];
+                
+                [arrayToReturn addObject:model];
+            }
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parsePendingRequestCount:(NSData *)responseData andError:(NSError **)error{
+    
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            UserModel *model=[[UserModel alloc]init];
+            
+            model.intPendingRequests=[[dict valueForKey:@"pendingRequests"]intValue];
+            
+            [arrayToReturn addObject:model];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parsePendingRequests:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *data=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfNormalRequest=[data valueForKey:@"requestList"];
+            
+            NSMutableArray *arrayN=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<arrayOfNormalRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                NSDictionary *requestData=[arrayOfNormalRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"price"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                // if user is customer or else shwo profile
+                model.strRate=[requestData valueForKey:@"customer_price"];
+                
+         
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+                
+
+                model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+
+                model.floatTotalPrice=[[requestData valueForKey:@"total_price"]floatValue];
+
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                //model.strPrice=[requestData valueForKey:@"price"];
+              //  model.strCalculatedPrice=[requestData valueForKey:@"calculated_price"];
+                
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"requestList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                
+                [arrayN addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayN];
+            
+            
+            NSMutableArray *arrayOfPackRequest=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfPackedRequest=[data valueForKey:@"packList"];
+            
+            for(int k=0;k<arrayOfPackedRequest.count;k++){
+                RequestModel *model=[[RequestModel alloc]init];
+                
+                model.isPackedRequest=YES;
+                NSDictionary *requestData=[arrayOfPackedRequest objectAtIndex:k];
+                model.strTimeStart=[requestData valueForKey:@"timestart"];
+                model.strTimeEnd=[requestData valueForKey:@"timeend"];
+                model.strRecurrenceType=[requestData valueForKey:@"rec_type"];
+                model.strDuration=[requestData valueForKey:@"duration"];
+                
+                model.strMessage=[requestData valueForKey:@"comment"];
+                model.strVenue=[requestData valueForKey:@"venue"];
+                model.strLastDayProposal=[requestData valueForKey:@"rate"];
+                model.strStatus=[requestData valueForKey:@"status_string"];
+                
+                model.strRate=[requestData valueForKey:@"customer_price"];
+            
+                model.arrayOfDays=[requestData valueForKey:@"days"];
+                
+                model.strStartDateToShow=[requestData valueForKey:@"custom_datestart"];
+                model.strEndDateToShow=[requestData valueForKey:@"custom_dateend"];
+                model.strStartTimeToShow=[requestData valueForKey:@"custom_timestart"];
+                model.strEndTimeToShow=[requestData valueForKey:@"custom_timeend"];
+            
+                  model.intChatCount=[[requestData valueForKey:@"newMessages"]intValue];
+                model.floatTotalPrice=[[requestData valueForKey:@"total_price"]floatValue];
+                
+
+                
+                model.requestId=[[requestData valueForKey:@"id"]intValue];
+                model.packRequestId=[[requestData valueForKey:@"pack_id"]intValue];
+                
+                
+                
+                model.strName=[requestData valueForKey:@"name"];
+                model.strImageURL=[requestData valueForKey:@"image"];
+                model.strName=[requestData valueForKey:@"name"];
+                model.intProposalId=[[requestData valueForKey:@"proposal"]intValue];
+                model.intID=[[requestData valueForKey:@"id"]intValue];
+                
+                
+                NSDictionary *dictControls=[data valueForKey:@"controls"];
+                NSDictionary *controlList=[dictControls valueForKey:@"packList"];
+                
+                NSMutableArray *requestControls=[controlList valueForKey:[requestData valueForKey:@"id"]];
+                
+                model.arrayOfButtons=[[NSMutableArray alloc]init];
+                
+                for(int p = 0;p<requestControls.count;p++){
+                    NSDictionary *controls=[requestControls objectAtIndex:p];
+                    
+                    [model.arrayOfButtons addObject:[controls valueForKey:@"btn"]];
+                }
+                
+                [arrayOfPackRequest addObject:model];
+            }
+            
+            [arrayToReturn addObject:arrayOfPackRequest];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            int errorCode=[[errorDict valueForKey:@"errorCode"]intValue];
+            if(errorCode==401){  // as per errorcode on server
+                NSMutableDictionary* details = [NSMutableDictionary dictionary];
+                [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+                *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserSessionIDServerError userInfo:details];
+                return nil;
+            }
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parseSentProposal:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseChatHistory:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfMessage=[dict valueForKey:@"messages"];
+            
+            for (int k=0;k<arrayOfMessage.count; k++) {
+                NSDictionary *propertiesOfMessage=[arrayOfMessage objectAtIndex:k];
+
+                NegotiationChatModel *model=[[NegotiationChatModel alloc]init];
+                
+                model.intMessageID=[[propertiesOfMessage valueForKey:@"message_id"]intValue];
+                
+                model.intRequestID=[[propertiesOfMessage valueForKey:@"id"]intValue];
+                model.intUserID=[[propertiesOfMessage valueForKey:@"userid"]intValue];
+                model.strCreatedDateTime=[propertiesOfMessage valueForKey:@"date"];
+                
+                model.strCreatedDateTime=[propertiesOfMessage valueForKey:@"date"];
+                
+                model.strImageURL=[propertiesOfMessage valueForKey:@"image"];
+                
+                model.strMessage=[propertiesOfMessage valueForKey:@"message"];
+                
+                model.strUserName=[propertiesOfMessage valueForKey:@"name"];
+                
+                [arrayToReturn addObject:model];
+            }
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+-(NSMutableArray *)parseSendChatToRequest:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfMessage=[dict valueForKey:@"messages"];
+            
+        
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+
+#pragma mark - Parse Search Result
+
+-(NSMutableArray *)parseSearch:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            SearchResultModel *searchResultModel=[[SearchResultModel alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            NSMutableArray *arrayOfUsers=[dict valueForKey:@"userRes"];
+            
+            NSMutableArray *usersList=[[NSMutableArray alloc]init];
+            
+            for(int k=0;k<[arrayOfUsers count];k++){
+                NSDictionary *userData=[arrayOfUsers objectAtIndex:k];
+                UserModel *userModel=[[UserModel alloc]init];
+                userModel.strDesciption=[userData valueForKey:@"description"];
+                userModel.strDJ_Bio=[userData valueForKey:@"bio"];
+                
+                userModel.userID=[[userData valueForKey:@"id"]intValue];
+                userModel.strDj_imageURL=[userData valueForKey:@"image"];
+                userModel.strDj_name=[userData valueForKey:@"user_name"];
+                userModel.strDj_OriginalImageURL=[userData valueForKey:@"dj_image_original"];
+
+                userModel.strRate=[userData valueForKey:@"rate"];
+                
+                [usersList addObject:userModel];
+            }
+            
+            searchResultModel.userCount=[[dict valueForKey:@"totalUserCount"]intValue];
+            searchResultModel.searchedWord=[dict valueForKey:@"searchword"];
+            searchResultModel.arrayOfuserModel=usersList;
+            
+            [arrayToReturn addObject:searchResultModel];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Parse Entertainers on demmand
+
+
+-(NSMutableArray *)parseEntertainers:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *userArray=[dict valueForKey:@"djList"];
+            
+            for(int k=0;k<userArray.count;k++){
+                NSDictionary *userData=[userArray objectAtIndex:k];
+                UserModel *model=[[UserModel alloc]init];
+                
+                model.userID=[[userData valueForKey:@"dj_id"] intValue];
+                model.strAddress=[userData valueForKey:@"address"];
+                model.strCity_b=[userData valueForKey:@"city_b"];
+                model.strCountry_name=[userData valueForKey:@"country_name"];
+                model.strDj_email=[userData valueForKey:@"dj_email"];
+                model.strDj_imageURL=[userData valueForKey:@"dj_image"];
+                model.strDj_name=[userData valueForKey:@"dj_name"];
+                model.strUser_type=[userData valueForKey:@"user_type"];
+                model.strRate=[userData valueForKey:@"rate"];
+                model.intLikeCount=[[userData valueForKey:@"like"] intValue];
+                model.intDislikeCount=[[userData valueForKey:@"unlike"] intValue];
+                model.strGenre=[userData objectForKey:@"genre_names"];
+                model.isFollowing=[[userData objectForKey:@"is_following"]intValue];
+
+                model.strDJ_Bio=[userData valueForKey:@"dj_bio"];
+                model.strDj_OriginalImageURL=[userData valueForKey:@"dj_image_original"];
+
+             
+                [arrayToReturn addObject:model];
+                
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parseDemandMe:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            //NSDictionary *dict=[json valueForKey:@"data"];
+           
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseGuestEntertainers:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            DropDownModel *dropDownModel=[[DropDownModel alloc]init];
+            
+            dropDownModel.dictArtistGenderList=[dict valueForKey:@"genderList"];
+            dropDownModel.dictArtistType=[dict valueForKey:@"artistTypes"];
+            dropDownModel.dictArtistGenreList=[dict valueForKey:@"genreList"];
+            dropDownModel.dictArtistSortedByList=[dict valueForKey:@"sortBy_list"];
+            dropDownModel.dictArtistSubType=[dict valueForKey:@"subTypeList"];
+            dropDownModel.dictCountryList=[dict valueForKey:@"countryList"];
+
+            
+            
+            [arrayToReturn addObject:dropDownModel];
+            
+            
+            NSMutableArray *userArray=[dict valueForKey:@"djList"];
+            
+            
+            for(int k=0;k<userArray.count;k++){
+                NSDictionary *userData=[userArray objectAtIndex:k];
+                UserModel *model=[[UserModel alloc]init];
+                
+                model.userID=[[userData valueForKey:@"dj_id"] intValue];
+                model.strAddress=[userData valueForKey:@"address"];
+                model.strCity_b=[userData valueForKey:@"city_b"];
+                model.strCountry_name=[userData valueForKey:@"country_name"];
+                model.strDj_email=[userData valueForKey:@"dj_email"];
+                model.strDj_imageURL=[userData valueForKey:@"dj_image"];
+                model.strDj_name=[userData valueForKey:@"dj_name"];
+                model.strUser_type=[userData valueForKey:@"user_type"];
+                model.strRate=[userData valueForKey:@"rate"];
+                model.intLikeCount=[[userData valueForKey:@"like"] intValue];
+                model.intDislikeCount=[[userData valueForKey:@"unlike"] intValue];
+                model.strGenre=[userData objectForKey:@"genre_names"];
+                model.isFollowing=[[userData objectForKey:@"is_following"]intValue];
+                
+                model.strDJ_Bio=[userData valueForKey:@"dj_bio"];
+                model.strDj_OriginalImageURL=[userData valueForKey:@"dj_image_original"];
+
+                
+                [arrayToReturn addObject:model];
+                
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Static content
+
+-(NSMutableArray *)parseStaticContent:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSDictionary *dictProduct=[dict valueForKey:@"product"];
+            
+            StaticContentModel *model=[[StaticContentModel alloc]init];
+            
+            model.strHtml=[dictProduct valueForKey:@"description_ios"];
+            model.strTitle=[dictProduct valueForKey:@"menu_title"];
+            
+            [arrayToReturn addObject:model];
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - User Media
+
+-(NSMutableArray *)parseUsersAlbumList:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfGallery=[dict valueForKey:@"gallery"];
+            
+            for (int k=0; k<arrayOfGallery.count; k++) {
+                NSDictionary *dictGallaryProperties=[arrayOfGallery objectAtIndex:k];
+                AlbumModel *model=[[AlbumModel alloc]init];
+                model.intGalleryId=[[dictGallaryProperties valueForKey:@"galleryId"] intValue];
+                model.intOwnerId=[[dictGallaryProperties valueForKey:@"ownerId"] intValue];
+                model.intPhotoCount=[[dictGallaryProperties valueForKey:@"photoCount"] intValue];
+                
+                model.strGalleryName=[dictGallaryProperties valueForKey:@"galleryName"];
+                
+                model.strPreviewURL=[dictGallaryProperties valueForKey:@"preview"];
+                
+                [arrayToReturn addObject:model];
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseAddAlbum:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            NSDictionary *dictGallaryProperties=[dict valueForKey:@"newAlbum"];
+            AlbumModel *model=[[AlbumModel alloc]init];
+                model.intGalleryId=[[dictGallaryProperties valueForKey:@"galleryId"] intValue];
+                model.intOwnerId=[[dictGallaryProperties valueForKey:@"ownerId"] intValue];
+                model.intPhotoCount=[[dictGallaryProperties valueForKey:@"photoCount"] intValue];
+                
+                model.strGalleryName=[dictGallaryProperties valueForKey:@"galleryName"];
+                
+                model.strPreviewURL=[dictGallaryProperties valueForKey:@"preview"];
+                
+                [arrayToReturn addObject:model];
+
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseDeleteAlbum:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+           // NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Photos
+
+-(NSMutableArray *)parseAlbumPhotoList:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            NSMutableArray *arrayOfGallery=[dict valueForKey:@"photos"];
+            
+            for (int k=0; k<arrayOfGallery.count; k++) {
+                
+                NSDictionary *dictGallaryProperties=[arrayOfGallery objectAtIndex:k];
+                PhotoModel *model=[[PhotoModel alloc]init];
+                model.strDescription=[dictGallaryProperties valueForKey:@"description"];
+                model.intOwnerId=[[dictGallaryProperties valueForKey:@"ownerId"] intValue];
+                model.intPhotoId=[[dictGallaryProperties valueForKey:@"photoId"] intValue];
+                
+                model.strPhotoImageURL=[dictGallaryProperties valueForKey:@"photoImage"];
+                model.strOriginalPreviewURL=[dictGallaryProperties valueForKey:@"preview_original"];
+                model.strPreviewURL=[dictGallaryProperties valueForKey:@"preview"];
+                
+                [arrayToReturn addObject:model];
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseUploadPhoto:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+           // NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseDeletePhoto:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+          //  NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parsePhotoDetails:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSDictionary *dictPhotoProp=[dict valueForKey:@"photo"];
+            
+            
+            PhotoModel *model=[[PhotoModel alloc]init];
+            model.strDescription=[dictPhotoProp valueForKey:@"description"];
+            model.intOwnerId=[[dictPhotoProp valueForKey:@"ownerId"] intValue];
+            model.intPhotoId=[[dictPhotoProp valueForKey:@"photoId"] intValue];
+            
+            model.strPhotoImageURL=[dictPhotoProp valueForKey:@"photoImage"];
+            
+            model.strPreviewURL=[dictPhotoProp valueForKey:@"preview"];
+            model.strOriginalPreviewURL=[dictPhotoProp valueForKey:@"preview_original"];
+
+            model.intTotalCommentCount=[[dict valueForKey:@"commentCount"]intValue];
+            
+            model.arrayOfCommentModels=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfComment=[dict valueForKey:@"comments"];
+            for(int k=0;k<arrayOfComment.count;k++){
+                NSDictionary *dictCommentProp=[arrayOfComment objectAtIndex:k];
+                
+                CommentModel *commentModel=[[CommentModel alloc]init];
+                commentModel.strComment=[dictCommentProp valueForKey:@"comment"];
+                commentModel.strDate=[dictCommentProp valueForKey:@"date"];
+                commentModel.strUserImageURL=[dictCommentProp valueForKey:@"user_image"];
+                commentModel.strUserName=[dictCommentProp valueForKey:@"user_name"];
+                commentModel.strVideoThumnailURL=[dictCommentProp valueForKey:@"preview"];
+                commentModel.intCommentByUserID=[[dictCommentProp valueForKey:@"userId"]intValue];
+                commentModel.strVideoURL=[dictCommentProp valueForKey:@"video"];
+                commentModel.intCommentID=[[dictCommentProp valueForKey:@"id"]intValue];
+                
+                [model.arrayOfCommentModels addObject:commentModel];
+            }
+            
+            [arrayToReturn addObject:model];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Video
+
+-(NSMutableArray *)parseAllVideoList:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfVideo=[dict valueForKey:@"videoList"];
+            for(int k=0;k<arrayOfVideo.count;k++){
+                NSDictionary *dictVideoProp=[arrayOfVideo objectAtIndex:k];
+                
+                VideoModel *model=[[VideoModel alloc]init];
+                model.intDislikes=[[dictVideoProp valueForKey:@"dislikes"]intValue];
+                model.intLikes=[[dictVideoProp valueForKey:@"likes"]intValue];
+                model.intRating=[[dictVideoProp valueForKey:@"rating"]intValue];
+                model.intSize=[[dictVideoProp valueForKey:@"size"]intValue];
+                
+                model.strDuration=[dictVideoProp valueForKey:@"duration"];
+                model.strPostDate=[dictVideoProp valueForKey:@"post_date"];
+                model.strVideoThumnailURL=[dictVideoProp valueForKey:@"video_image"];
+                model.strVideoTitle=[dictVideoProp valueForKey:@"video_title"];
+                model.strVideoURL=[dictVideoProp valueForKey:@"video_file"];
+                model.intVideoId=[[dictVideoProp valueForKey:@"video_id"]intValue];
+                model.intIsFav=[[dictVideoProp valueForKey:@"is_fav"]intValue];
+
+                [arrayToReturn addObject:model];
+            }
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseVideoDetails:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSDictionary *dictVideoProp=[dict valueForKey:@"video"];
+            
+            VideoModel *model=[[VideoModel alloc]init];
+            model.intDislikes=[[dictVideoProp valueForKey:@"dislikes"]intValue];
+            model.intLikes=[[dictVideoProp valueForKey:@"likes"]intValue];
+            model.intRating=[[dictVideoProp valueForKey:@"rating"]intValue];
+            model.intSize=[[dictVideoProp valueForKey:@"size"]intValue];
+            
+            model.strDuration=[dictVideoProp valueForKey:@"duration"];
+            model.strPostDate=[dictVideoProp valueForKey:@"post_date"];
+            model.strVideoThumnailURL=[dictVideoProp valueForKey:@"video_image"];
+            model.strVideoTitle=[dictVideoProp valueForKey:@"video_title"];
+            model.strVideoURL=[dictVideoProp valueForKey:@"video_file"];
+            
+            model.intIsFav=[[dict valueForKey:@"is_fav"]intValue];
+            model.intVideoSource=[[dict valueForKey:@"video_source"]intValue];
+            
+            model.strYoutubeVideoURL=[dict valueForKey:@"videoYoutube"];
+            model.arrayOfCommentModels=[[NSMutableArray alloc]init];
+            
+            model.intTotalCommentCount=[[dict valueForKey:@"commentCount"]intValue];
+            
+            NSMutableArray *arrayOfComment=[dict valueForKey:@"comments"];
+            for(int k=0;k<arrayOfComment.count;k++){
+                NSDictionary *dictCommentProp=[arrayOfComment objectAtIndex:k];
+                
+                CommentModel *commentModel=[[CommentModel alloc]init];
+                commentModel.strComment=[dictCommentProp valueForKey:@"comment"];
+                commentModel.strDate=[dictCommentProp valueForKey:@"date"];
+                commentModel.strUserImageURL=[dictCommentProp valueForKey:@"user_image"];
+                commentModel.strUserName=[dictCommentProp valueForKey:@"user_name"];
+                commentModel.strVideoThumnailURL=[dictCommentProp valueForKey:@"preview"];
+                commentModel.intCommentByUserID=[[dictCommentProp valueForKey:@"userId"]intValue];
+                commentModel.strVideoURL=[dictCommentProp valueForKey:@"video"];
+                commentModel.intCommentID=[[dictCommentProp valueForKey:@"id"]intValue];
+                [model.arrayOfCommentModels addObject:commentModel];
+            }
+            
+            [arrayToReturn addObject:model];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseDeleteVideos:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+          //  NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parseUploadVideo:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+         //   NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+
+
+
+#pragma mark - Blogs
+
+-(NSMutableArray *)parseAllblogs:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            NSMutableArray *blogsArray=[dict valueForKey:@"posts"];
+            
+            for(int k=0;k<blogsArray.count;k++){
+                NSDictionary *dictOfBlogs=[blogsArray objectAtIndex:k];
+                
+                BlogModel *model=[[BlogModel alloc]init];
+                
+                model.strTitle=[dictOfBlogs valueForKey:@"title"];
+                model.strDescription=[dictOfBlogs valueForKey:@"description"];
+                model.strPreviewURL=[dictOfBlogs valueForKey:@"image"];
+                model.strDatePublishedOn=[dictOfBlogs valueForKey:@"publishedon"];
+                model.strUserName=[dictOfBlogs valueForKey:@"user_name"];
+                model.intBlogId=[[dictOfBlogs valueForKey:@"id"]intValue];
+                model.intUserId=[[dictOfBlogs valueForKey:@"owner_id"]intValue];
+
+                model.strPublishedOnCustom=[dictOfBlogs valueForKey:@"publishedon_custom"];
+                
+                [arrayToReturn addObject:model];
+                
+            }
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseDeleteBlogs:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+          //  NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseBlogsDetails:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSDictionary *dictBlogProp=[dict valueForKey:@"post"];
+            
+            
+            BlogModel *model=[[BlogModel alloc]init];
+            
+            model.strTitle=[dictBlogProp valueForKey:@"title"];
+            model.strDescription=[dictBlogProp valueForKey:@"description"];
+            model.strPreviewURL=[dictBlogProp valueForKey:@"image"];
+            model.strDatePublishedOn=[dictBlogProp valueForKey:@"publishedon"];
+            model.strUserName=[dictBlogProp valueForKey:@"user_name"];
+            model.intBlogId=[[dictBlogProp valueForKey:@"id"]intValue];
+    
+            model.strPublishedOnCustom=[dictBlogProp valueForKey:@"publishedon_custom"];
+            model.intTotalCommentCount=[[dict valueForKey:@"commentCount"]intValue];
+            
+            
+            model.arrayOfCommentModels=[[NSMutableArray alloc]init];
+            
+            NSMutableArray *arrayOfComment=[dict valueForKey:@"commentsList"];
+            for(int k=0;k<arrayOfComment.count;k++){
+                NSDictionary *dictCommentProp=[arrayOfComment objectAtIndex:k];
+                
+                CommentModel *commentModel=[[CommentModel alloc]init];
+                commentModel.strComment=[dictCommentProp valueForKey:@"comment"];
+                commentModel.strDate=[dictCommentProp valueForKey:@"date"];
+                commentModel.strUserImageURL=[dictCommentProp valueForKey:@"user_image"];
+                commentModel.strUserName=[dictCommentProp valueForKey:@"user_name"];
+                commentModel.strVideoThumnailURL=[dictCommentProp valueForKey:@"preview"];
+                commentModel.intCommentByUserID=[[dictCommentProp valueForKey:@"userId"]intValue];
+                commentModel.strVideoURL=[dictCommentProp valueForKey:@"video"];
+                commentModel.intCommentID=[[dictCommentProp valueForKey:@"id"]intValue];
+                
+                [model.arrayOfCommentModels addObject:commentModel];
+            }
+            
+            [arrayToReturn addObject:model];
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Tracks
+
+-(NSMutableArray *)parseTrackList:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            NSMutableArray *arrayOfTracks=[dict valueForKey:@"trackList"];
+            
+            for (int k=0; k<arrayOfTracks.count; k++) {
+                NSDictionary *dictTrackProp=[arrayOfTracks objectAtIndex:k];
+
+                TrackModel *model=[[TrackModel alloc]init];
+                
+                model.intMusicId=[[dictTrackProp valueForKey:@"music_id"]intValue];
+                 model.intUserId=[[dictTrackProp valueForKey:@"user_id"]intValue];
+                
+                model.strFileName=[dictTrackProp valueForKey:@"file_name"];
+                model.strPlayingURL=[dictTrackProp valueForKey:@"music_file"];
+                
+                [arrayToReturn addObject:model];
+            }
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseDeleteTrack:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+         //   NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+-(NSMutableArray *)parseUploadTrack:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+           // NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+           
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Follow/unfollow  
+
+-(NSMutableArray *)parseFollow:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            //NSDictionary *dict=[json valueForKey:@"data"];
+            
+           
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+-(NSMutableArray *)parseUnFollow:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            //NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+#pragma mark - Live session
+
+-(NSMutableArray *)parseLiveSessions:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            NSMutableArray *arrayOfSessions=[dict valueForKey:@"items"];
+            
+            for(int k=0;k<arrayOfSessions.count;k++){
+                NSMutableDictionary *propOfSession=[arrayOfSessions objectAtIndex:k];
+              
+
+                
+                LiveSessionModel *model=[[LiveSessionModel alloc]init];
+                
+                model.intSlotID=[[propOfSession valueForKey:@"slotid"] intValue];
+
+                model.strEndTime=[propOfSession valueForKey:@"end"];
+                model.strId=[propOfSession valueForKey:@"id"];
+                model.strImageURL=[propOfSession valueForKey:@"img"];
+                model.strName=[propOfSession valueForKey:@"name"];
+                model.strStartTime=[propOfSession valueForKey:@"start"];
+              
+                NSMutableArray *arrayOfComments=[propOfSession valueForKey:@"comments"];
+                model.arrayOfChatModels=[[NSMutableArray alloc]init];
+                
+                for (int k=0; k<arrayOfComments.count; k++) {
+                    NSMutableDictionary *propOfChatModel=[arrayOfComments objectAtIndex:k];
+
+                    ActiveLiveSessionChatModel *activeLiveSessionChatModel=[[ActiveLiveSessionChatModel alloc]init];
+                    
+                    activeLiveSessionChatModel.strCreatedDateTime=[propOfChatModel valueForKey:@"created"];
+                    
+                    activeLiveSessionChatModel.strDeviceId=[propOfChatModel valueForKey:@"device_id"];
+                    activeLiveSessionChatModel.strGuestSignature=[propOfChatModel valueForKey:@"guest_signature"];
+                    activeLiveSessionChatModel.strMessage=[propOfChatModel valueForKey:@"message"];
+                    activeLiveSessionChatModel.strUserName=[propOfChatModel valueForKey:@"username"];
+                    activeLiveSessionChatModel.intSessionId=[[propOfChatModel valueForKey:@"sessionId"]intValue];
+                    activeLiveSessionChatModel.intUserid=[[propOfChatModel valueForKey:@"userid"]intValue];
+                    
+                    [model.arrayOfChatModels addObject:activeLiveSessionChatModel];
+                
+                }
+                
+                [arrayToReturn addObject:model];
+            }
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+
+}
+
+-(NSMutableArray *)parseSendMessageToLiveSessions:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+    
+}
+
+-(NSMutableArray *)parsePreviousMessageOfLiveSessions:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            NSMutableArray *arrayOfMessage=[dict valueForKey:@"messages"];
+            
+            for (int k=0; k<arrayOfMessage.count; k++) {
+                NSMutableDictionary *propOfChatModel=[arrayOfMessage objectAtIndex:k];
+                
+                ActiveLiveSessionChatModel *activeLiveSessionChatModel=[[ActiveLiveSessionChatModel alloc]init];
+                
+                activeLiveSessionChatModel.strCreatedDateTime=[propOfChatModel valueForKey:@"created"];
+                
+                activeLiveSessionChatModel.strDeviceId=[propOfChatModel valueForKey:@"device_id"];
+                activeLiveSessionChatModel.strGuestSignature=[propOfChatModel valueForKey:@"guest_signature"];
+                activeLiveSessionChatModel.strMessage=[propOfChatModel valueForKey:@"message"];
+                activeLiveSessionChatModel.strUserName=[propOfChatModel valueForKey:@"username"];
+                activeLiveSessionChatModel.intSessionId=[[propOfChatModel valueForKey:@"sessionId"]intValue];
+                activeLiveSessionChatModel.intUserid=[[propOfChatModel valueForKey:@"userid"]intValue];
+                
+                [arrayToReturn addObject:activeLiveSessionChatModel];
+                
+            }
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+    
+}
+
+
+
+#pragma mark - PushNotification service
+
+
+-(NSMutableArray *)parseUpdateDeviceToken:(NSData *)responseData andError:(NSError **)error{
+    NSMutableArray *arrayToReturn;
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    if(!errors){
+        
+        if([[json valueForKey:@"status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            
+            return arrayToReturn;
+        }
+        else{
+            NSDictionary *errorDict=[json valueForKey:@"error"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[errorDict valueForKey:@"errorMessage"] forKey:NSLocalizedDescriptionKey];
+            *error = [NSError errorWithDomain:WCIErrorDomain code:WCIUserServerError userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:WCIErrorDomain code:WCIJSONInvalidError userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+
+@end

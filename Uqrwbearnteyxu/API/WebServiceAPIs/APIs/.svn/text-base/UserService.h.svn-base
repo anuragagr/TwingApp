@@ -1,0 +1,83 @@
+//
+//  UserService.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 11/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "ASIFormDataRequest.h"
+
+@interface UserService : NSObject
+
+@property(nonatomic,readwrite)int tag;
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
+
+//shared instance
++ (UserService *)sharedInstance;
+
+// login
+-(void)loginUser:(NSString *)userName andPassword:(NSString *)password;
+
+-(void)logOut:(int)userID;
+
+/** 
+  Get user profile on userid.
+ */
+
+-(void)getUserProfile:(int)userID;
+
+// cancel web service
+-(void)cancelWebService;
+
+//Get album list
+-(void)getAllAlbumForUserid:(int)userID andPageNo:(int)pageNo andLimit:(int)limit;
+
+
+//Add album
+-(void)addAlbumWithName:(NSString *)name;
+
+//Delete album
+-(void)deleteAlbumWithArrayAlbumModels:(NSMutableArray *)arrayOfAlbumModel;
+
+//Get album list
+-(void)getAllPhotosInAlbum:(int)albumId andPageNo:(int)pageNo andLimit:(int)limit forUserId:(int)userId;
+
+// Get all videos
+-(void)getAllVideoListisForMobile:(int)isForMobile andUserId:(int)userID andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)getVideoDetailbyUsingVideoId:(int)videoId;
+
+-(void)getPhotoDetailbyUsingPhotoId:(int)photoId;
+
+-(void)uploadPhoto:(UIImage *)imgData andProgressView:(UIProgressView *)progresView andAlbumId:(int)albumId andImageName:(NSString *)imgName;
+
+-(void)deletePhotosWithArrayPhotoModels:(NSMutableArray *)arrayOfPhotoModel;
+
+-(void)deleteVideosWithArrayVideoModels:(NSMutableArray *)arrayOfVideoModel;
+
+
+-(void)getAllBlogsOnUserId:(int)userId andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)deleteBlogsWithArrayBlogsModels:(NSMutableArray *)arrayOfBlogsModel;
+
+-(void)getBlogDetailsOnPostId:(int)postid andUserId:(int)userID;
+
+-(void)uploadVideo:(NSData *)videoData andProgressView:(UIProgressView *)progressView andVideoType:(int)videoType andVideoAccessory:(NSString *)strVideoaccessory andYoutubeURL:(NSString *)youtubeurl andVideoTitle:(NSString *)title;
+
+#pragma mark - Tracks
+
+-(void)getAllTracksListOnUserId:(int)userId;
+-(void)uploadTrack:(NSData *)audioData andTrackName:(NSString *)trackName andProgressView:(UIProgressView *)progressView;
+-(void)deleteTracksWithArrayTrackModels:(NSMutableArray *)arrayOfTracksModel;
+
+
+-(void)uploadPhoto:(UIImage *)imgData ForBarAmbianceImageName:(NSString *)imgName;
+
+
+    
+@end

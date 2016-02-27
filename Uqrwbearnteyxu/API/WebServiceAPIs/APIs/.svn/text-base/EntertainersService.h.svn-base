@@ -1,0 +1,38 @@
+//
+//  EntertainersService.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 19/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "ASIFormDataRequest.h"
+#import "DemandMeModel.h"
+
+@interface EntertainersService : NSObject
+@property(nonatomic,readwrite)int tag;
+
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
++ (EntertainersService *)sharedInstance;
+
+-(void)getEntertainersOnGender:(NSString *)gender andArtistType:(NSString *)artistType andSubType:(int)subtype andGenere:(int)genere andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit;
+
+
+-(void)demmandEntertainerID:(int)djID andDemandModel:(DemandMeModel *)model;
+
+-(void)getEntertainersForGuestOnGender:(NSString *)gender andArtistType:(NSString *)artistType andSubType:(int)subtype andGenere:(int)genere andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit;
+
+
+#pragma mark - Follow unfollow
+
+-(void)followUserByUsingID:(int)userId;
+-(void)unFollowUserByUsingID:(int)userId;
+
+// cancel web service
+-(void)cancelWebService;
+
+@end

@@ -1,0 +1,64 @@
+//
+//  EventService.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 11/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "ASIFormDataRequest.h"
+@class EventModel;
+
+@interface EventService : NSObject
+
+@property(nonatomic,readwrite)int tag;
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
+// shared instance
++ (EventService *)sharedInstance;
+
+
+/**
+  To get all event or filterd events
+ */
+-(void)getEventsonType:(int)type andStatus:(int)status andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit;
+
+/**
+ To create new event.
+ 
+ */
+-(void)createEvent:(EventModel *)eventModel;
+
+
+
+
+
+/**
+ Get event details
+ 
+ */
+-(void)getEventDetail:(int)broadcasterID andHash:(NSString *)hash;
+
+
+/**
+ Get event list for guest user
+ 
+ */
+-(void)getEventsForGuestonType:(int)type andStatus:(int)status andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit;
+
+/**
+ Updates guest user location
+ 
+ */
+-(void)updateGuestUserLocationWithStreet:(NSString *)street andZip:(NSString *)zip andCity:(NSString *)city andDistrict:(NSString *)dist andState:(NSString *)state andCountry:(NSString *)country andForEvent:(int)eventID;
+
+
+
+    
+// cancel web service
+-(void)cancelWebService;
+
+@end

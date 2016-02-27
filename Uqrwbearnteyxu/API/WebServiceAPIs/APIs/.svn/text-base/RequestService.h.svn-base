@@ -1,0 +1,47 @@
+//
+//  RequestService.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 10/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "Service.h"
+@class RequestModel;
+
+@interface RequestService : NSObject
+
+@property (readwrite, nonatomic) int tag;
+
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
+//shared instance
++ (RequestService *)sharedInstance;
+
+
+//request on month
+-(void)getRequestonMonth:(int)month andYear:(int)year andTimeZone:(NSString *)timeZone;
+
+//request on date
+-(void)getRequestonDate:(NSDate *)date andTimeZone:(NSString *)timeZone;
+
+// request for future requests
+-(void)getFutureRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)getTodayRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)getNextWeekRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)getPackedRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit;
+
+-(void)acceptRequest:(RequestModel *)model isProvider:(BOOL)isProvider;
+-(void)cancelRequest:(RequestModel *)model andMessage:(NSString *)strMessage isProvider:(BOOL)isProvider;
+
+
+// cancel web service
+-(void)cancelWebService;
+
+@end

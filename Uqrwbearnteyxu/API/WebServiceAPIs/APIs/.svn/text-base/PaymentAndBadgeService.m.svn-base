@@ -1,0 +1,120 @@
+//
+//  PaymentAndBadgeService.m
+//  WCI
+//
+//  Created by Rahul N. Mane on 17/09/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "PaymentAndBadgeService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+#define kTimeout 15
+
+
+#define pendingRequestCountURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/pending-count"]
+#define confirmPaymentURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/payment/app-payment"]
+#define confirmPaymentURLPostParams @"params"
+
+@implementation PaymentAndBadgeService
+
++ (PaymentAndBadgeService *)sharedInstance
+{
+    // 1
+    static PaymentAndBadgeService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[PaymentAndBadgeService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getPendingrequestCount{
+    
+    NSURL *url=[NSURL URLWithString:pendingRequestCountURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=6;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)confirmPayments:(NSString *)jsonStringOfPaymentModels{
+    
+    NSURL *url=[NSURL URLWithString:confirmPaymentURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:jsonStringOfPaymentModels forKey:confirmPaymentURLPostParams];
+    
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=7;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+ 
+    if(theRequest.tag==6)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePendingRequestCount:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==7)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseConfirmPayment:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    
+}
+
+
+
+
+@end

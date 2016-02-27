@@ -1,0 +1,282 @@
+//
+//  EntertainersService.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 19/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "EntertainersService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+
+#define kTimeout 15
+
+#define entertainersURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/artist-search"]
+
+#define entertainersURLPostGender @"gender"
+#define entertainersURLArtistType @"artist-type"
+#define entertainersURLPostSubType @"sub-type"
+#define entertainersURLPostGenre @"genre"
+#define entertainersURLPostCountry @"country"
+#define entertainersURLPostSortby @"sortby"
+#define entertainersURLPostCp @"cp"
+#define entertainersURLPostLimit @"limit"
+
+
+#define demandMeURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/create-reccurence"]
+
+#define demandMeURLPostDjId @"userid"
+#define demandMeURLPostStartDate @"date_start"
+#define demandMeURLPostEndDate @"date_end"
+#define demandMeURLPostStartTime @"timestart"
+#define demandMeURLPostEndTime @"timeend"
+#define demandMeURLPostComment @"comment"
+#define demandMeURLPostVenue @"numbervenue"
+#define demandMeURLPostPeriod @"period"
+#define demandMeURLPostWeekdays @"weekdays"
+#define demandMeURLPostAcceptRate @"accept_rate"
+#define demmadMeURLPostRateProposal @"rateproposal"
+
+
+#define userFollowURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/follower/follow"]
+#define userFollowPostUserId @"userid"
+
+#define userUnFollowURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/follower/unfollow"]
+#define userUnFollowPostUserId @"userid"
+
+@implementation EntertainersService
+
+
++ (EntertainersService *)sharedInstance
+{
+    // 1
+    static EntertainersService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[EntertainersService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getEntertainersOnGender:(NSString *)gender andArtistType:(NSString *)artistType andSubType:(int)subtype andGenere:(int)genere andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit{
+    NSURL *url=[NSURL URLWithString:entertainersURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",gender] forKey:entertainersURLPostGender];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",artistType] forKey:entertainersURLArtistType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",subtype] forKey:entertainersURLPostSubType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",genere] forKey:entertainersURLPostGenre];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",country] forKey:entertainersURLPostCountry];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",sortedBy] forKey:entertainersURLPostSortby];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:entertainersURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:entertainersURLPostLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)demmandEntertainerID:(int)djID andDemandModel:(DemandMeModel *)model{
+
+    NSURL *url=[NSURL URLWithString:demandMeURL];
+
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",djID] forKey:demandMeURLPostDjId];
+
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.dateStart] forKey:demandMeURLPostStartDate];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.dateEnd] forKey:demandMeURLPostEndDate];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.timeStart] forKey:demandMeURLPostStartTime];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.timeEnd] forKey:demandMeURLPostEndTime];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.strComment] forKey:demandMeURLPostComment];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.numVenue] forKey:demandMeURLPostVenue];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.strPeriod] forKey:demandMeURLPostPeriod];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.acceptBillingRates] forKey:demandMeURLPostAcceptRate];
+    if(model.acceptBillingRates==1){
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%@",model.strPrice] forKey:demmadMeURLPostRateProposal];
+    }
+    
+    if(model.arrayOfDays.count>0){
+        
+        //NSMutableString *strWeekDays = [NSMutableString string];
+        int k=0;
+        for (NSString *selectedDay in model.arrayOfDays) {
+            //[strWeekDays appendFormat:@"weekdays[]=%@&",];
+            
+            [self.requestform setPostValue:[selectedDay stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding] forKey:[NSString stringWithFormat:@"weekdays[%d]",k]];
+            k++;
+        }
+        
+        
+    }
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+
+-(void)getEntertainersForGuestOnGender:(NSString *)gender andArtistType:(NSString *)artistType andSubType:(int)subtype andGenere:(int)genere andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit{
+    NSURL *url=[NSURL URLWithString:entertainersURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",gender] forKey:entertainersURLPostGender];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",artistType] forKey:entertainersURLArtistType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",subtype] forKey:entertainersURLPostSubType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",genere] forKey:entertainersURLPostGenre];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",country] forKey:entertainersURLPostCountry];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",sortedBy] forKey:entertainersURLPostSortby];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:entertainersURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:entertainersURLPostLimit];
+    
+   
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+#pragma mark - Follow and Unfollow
+
+-(void)followUserByUsingID:(int)userId{
+    NSURL *url=[NSURL URLWithString:userFollowURL];
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    self.requestform.tag=4;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:userFollowPostUserId];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)unFollowUserByUsingID:(int)userId{
+    NSURL *url=[NSURL URLWithString:userUnFollowURL];
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    self.requestform.tag=5;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:userFollowPostUserId];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseEntertainers:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDemandMe:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+        
+    }
+    else if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+       NSMutableArray *array=[parser parseGuestEntertainers:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+        
+    }
+    else if (theRequest.tag==4){
+        // Follow user
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseFollow:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==5){
+        // Follow user
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUnFollow:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+}
+
+@end

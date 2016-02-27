@@ -1,0 +1,33 @@
+//
+//  NegotiateSlotService.h
+//  WCI
+//
+//  Created by Rahul N. Mane on 20/08/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "ASIFormDataRequest.h"
+
+@interface NegotiateSlotService : NSObject
+
+@property (readwrite, nonatomic) int tag;
+
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
++ (NegotiateSlotService *)sharedInstance;
+
+-(void)getPendingRequestsForCP:(int)pageNo andLimit:(int)limit;
+-(void)sendProposalToRequest:(int)requestID andTypeOfRequest:(NSString *)strType andRate:(float)rate andTimeStart:(NSString *)startTime andEndTime:(NSString *)endTime andStartDate:(NSString *)startDate andEndDate:(NSString *)endDate andWeekDays:(NSMutableArray *)arrayOfDays;
+
+
+-(void)getConfirmedRequestsForCP:(int)pageNo andLimit:(int)limit;
+
+
+
+// cancel web service
+-(void)cancelWebService;
+
+@end

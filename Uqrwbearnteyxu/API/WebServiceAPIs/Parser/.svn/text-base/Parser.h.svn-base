@@ -1,0 +1,130 @@
+//
+//  Parser.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 10/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface Parser : NSObject
+
+
+
+
+
+
+//user
+-(NSMutableArray *)parseUserProfile:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseLogOutdata:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseLoginData:(NSData *)responseData andError:(NSError **)error;
+
+
+
+//request
+-(NSMutableArray *)parseReuests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseFutureReuests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseTodayReuests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseNextWeekReuests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parsePackedReuests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseOnDateReuests:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseAcceptReuest:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseCancelReuest:(NSData *)responseData andError:(NSError **)error;
+
+
+
+// events
+-(NSMutableArray *)parseEvents:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseCreateEvents:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseEventDetail:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseGuestEvents:(NSData *)responseData andError:(NSError **)error;
+
+
+
+// notifications
+
+#pragma mark - Negotation feature
+
+-(NSMutableArray *)parsePendingRequestCount:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parsePendingRequests:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseSentProposal:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseChatHistory:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseSendChatToRequest:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseConfirmPayment:(NSData *)responseData andError:(NSError **)error;
+
+
+//search
+#pragma mark - search
+
+-(NSMutableArray *)parseSearch:(NSData *)responseData andError:(NSError **)error;
+
+// entertainers
+-(NSMutableArray *)parseEntertainers:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseDemandMe:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseGuestEntertainers:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseUpdateGuestUserLocation:(NSData *)responseData andError:(NSError **)error;
+
+
+
+// static content
+
+-(NSMutableArray *)parseStaticContent:(NSData *)responseData andError:(NSError **)error;
+
+
+-(NSMutableArray *)parseUsersAlbumList:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseAddAlbum:(NSData *)responseData andError:(NSError **)error
+;
+
+-(NSMutableArray *)parseDeleteAlbum:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseAlbumPhotoList:(NSData *)responseData andError:(NSError **)error;
+
+
+-(NSMutableArray *)parseAllVideoList:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseVideoDetails:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parsePhotoDetails:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseUploadPhoto:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseDeletePhoto:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseDeleteVideos:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseAllblogs:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseDeleteBlogs:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseBlogsDetails:(NSData *)responseData andError:(NSError **)error;
+
+-(NSMutableArray *)parseUploadVideo:(NSData *)responseData andError:(NSError **)error;
+
+#pragma mark - Tracks
+
+-(NSMutableArray *)parseTrackList:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseUploadTrack:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseDeleteTrack:(NSData *)responseData andError:(NSError **)error;
+
+
+#pragma mark - Follow/unfollow
+
+-(NSMutableArray *)parseFollow:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseUnFollow:(NSData *)responseData andError:(NSError **)error;
+
+#pragma mark - Live session
+
+-(NSMutableArray *)parseLiveSessions:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseSendMessageToLiveSessions:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parsePreviousMessageOfLiveSessions:(NSData *)responseData andError:(NSError **)error;
+
+#pragma mark - Push notfication
+
+-(NSMutableArray *)parseUpdateDeviceToken:(NSData *)responseData andError:(NSError **)error;
+
+
+    
+@end

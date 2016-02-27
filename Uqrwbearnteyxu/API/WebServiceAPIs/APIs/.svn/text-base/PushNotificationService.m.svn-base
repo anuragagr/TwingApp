@@ -1,0 +1,94 @@
+//
+//  PushNotificationService.m
+//  WCI
+//
+//  Created by Rahul N. Mane on 21/08/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "PushNotificationService.h"
+#import "CookieManager.h"
+#import "Constants.h"
+#import "Parser.h"
+
+
+#define kTimeout 15
+
+#define updateDeviceTokenURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/update-ios-token"]
+
+
+#define updateDeviceTokenURLPostDeviceToken @"device_token"
+
+@implementation PushNotificationService
+
+
++ (PushNotificationService *)sharedInstance
+{
+    // 1
+    static PushNotificationService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[PushNotificationService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)updateDeviceToken:(NSString *)deviceToken andForUserID:(int)userID{
+    NSURL *url=[NSURL URLWithString:updateDeviceTokenURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",deviceToken] forKey:updateDeviceTokenURLPostDeviceToken];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUpdateDeviceToken:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        
+    }
+}
+
+
+
+@end

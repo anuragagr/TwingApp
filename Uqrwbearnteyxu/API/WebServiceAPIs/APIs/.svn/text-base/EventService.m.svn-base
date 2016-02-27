@@ -1,0 +1,344 @@
+//
+//  EventService.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 11/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "EventService.h"
+#import "Parser.h"
+#import "EventModel.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+
+#define kTimeout 15
+
+#define eventsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/event-search"]
+#define eventsURLPostType @"type"
+#define eventsURLPostStatus @"status"
+#define eventsURLPostCountry @"country"
+#define eventsURLPostSortedBy @"sortby"
+#define eventsURLPostCp @"cp"
+#define eventsURLPostLimit @"limit"
+
+
+#define createEventsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/event-ondemand/create"]
+#define createEventsURLPostTitle @"title"
+#define createEventsURLPostURL @"url"
+#define createEventsURLPostCategory @"category"
+#define createEventsURLPostTimeStart @"timestart"
+#define createEventsURLPostTimeEnd @"timeend"
+#define createEventsURLPostDescription @"description"
+#define createEventsURLPostVenue @"venue"
+#define createEventsURLPostAddress @"address"
+#define createEventsURLPostType @"type"
+#define createEventsURLPostPrice @"price"
+#define createEventsURLPostAutoincrease @"autoincrease"
+#define createEventsURLPostLast_price @"last_price"
+#define createEventsURLPostAllow_donations @"allow_donations"
+#define createEventsURLPostCategory @"category"
+#define createEventsURLPostViewers @"viewers"
+
+#define eventDetailURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/event-ondemand/view/"]
+
+#define eventDetailURLPostUserID @"userid"
+#define eventDetailURLPostHash @"hash"
+
+#define updateGuestLocationURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/stream"]
+#define updateGuestLocationURLPOSTEventId @"eventid"
+
+@implementation EventService
+
++ (EventService *)sharedInstance{
+    // 1
+    static EventService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[EventService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+
+-(void)getEventsonType:(int)type andStatus:(int)status andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:eventsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",type] forKey:eventsURLPostType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",status] forKey:eventsURLPostStatus];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",country] forKey:eventsURLPostCountry];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",sortedBy] forKey:eventsURLPostSortedBy];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:eventsURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:eventsURLPostLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)createEvent:(EventModel *)eventModel{
+    NSURL *url=[NSURL URLWithString:createEventsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strTitle] forKey:createEventsURLPostTitle];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strEventURL] forKey:createEventsURLPostURL];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventModel.country] forKey:eventsURLPostCountry];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.dateTimeStart] forKey:createEventsURLPostTimeStart];
+     [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.dateTimeEnd] forKey:createEventsURLPostTimeEnd];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strDescreption] forKey:createEventsURLPostDescription];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strVenue] forKey:createEventsURLPostVenue];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strAddress] forKey:createEventsURLPostAddress];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventModel.paidTypePrepaid] forKey:createEventsURLPostType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strTypeOfEvent] forKey:createEventsURLPostCategory];
+    
+    if(eventModel.paidTypePrepaid==1){  // is prepaid yes
+         [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventModel.intNumberOfViewers] forKey:createEventsURLPostViewers];
+         [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventModel.is_allow_donations] forKey:createEventsURLPostAllow_donations];
+
+    }
+    else{// is prepaid no
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strPrice] forKey:createEventsURLPostPrice];
+       
+    }
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventModel.autoIncrease] forKey:createEventsURLPostAutoincrease];
+    if(eventModel.autoIncrease>0){
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%@",eventModel.strLastPrice] forKey:createEventsURLPostLast_price];
+    }
+
+    
+   
+    
+
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+
+// new
+
+-(void)getEventDetail:(int)broadcasterID andHash:(NSString *)hash{
+    NSURL *url=[NSURL URLWithString:eventDetailURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",broadcasterID] forKey:eventDetailURLPostUserID];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",hash] forKey:eventDetailURLPostHash];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+-(void)getEventsForGuestonType:(int)type andStatus:(int)status andCountry:(int)country andSortedBy:(NSString *)sortedBy andcCP:(int)pageNo andLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:eventsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",type] forKey:eventsURLPostType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",status] forKey:eventsURLPostStatus];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",country] forKey:eventsURLPostCountry];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",sortedBy] forKey:eventsURLPostSortedBy];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:eventsURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:eventsURLPostLimit];
+    
+    
+    self.requestform.tag=4;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)updateGuestUserLocationWithStreet:(NSString *)street andZip:(NSString *)zip andCity:(NSString *)city andDistrict:(NSString *)dist andState:(NSString *)state andCountry:(NSString *)country andForEvent:(int)eventID{
+    
+    NSURL *url=[NSURL URLWithString:updateGuestLocationURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",eventID] forKey:updateGuestLocationURLPOSTEventId];
+    
+    NSMutableArray *arrayOfAddress=[[NSMutableArray alloc]init];
+    if(street == (id)[NSNull null] || street.length == 0)
+    {
+        street=@"";
+    }
+    if(zip == (id)[NSNull null] || zip.length == 0)
+    {
+        zip=@"";
+    }
+    if(city == (id)[NSNull null] || city.length == 0)
+    {
+        city=@"";
+    }
+
+    if(dist == (id)[NSNull null] || dist.length == 0)
+    {
+        dist=@"";
+    }
+
+    if(state == (id)[NSNull null] || state.length == 0)
+    {
+        state=@"";
+    }
+
+    if(country == (id)[NSNull null] || country.length == 0)
+    {
+        country=@"";
+    }
+
+    [arrayOfAddress addObject:street];
+    [arrayOfAddress addObject:zip];
+        [arrayOfAddress addObject:city];
+        [arrayOfAddress addObject:dist];
+        [arrayOfAddress addObject:state];
+    [arrayOfAddress addObject:country];
+
+    [self.requestform setPostValue:street forKey:@"location[street]"];
+    [self.requestform setPostValue:street forKey:@"location[zip]"];
+    [self.requestform setPostValue:street forKey:@"location[city]"];
+    [self.requestform setPostValue:street forKey:@"location[district]"];
+    [self.requestform setPostValue:street forKey:@"location[state]"];
+    [self.requestform setPostValue:street forKey:@"location[country]"];
+
+    
+    if(arrayOfAddress.count>0){
+        
+        //NSMutableString *strWeekDays = [NSMutableString string];
+        int k=0;
+        for (NSString *selectedStr in arrayOfAddress) {
+            //[strWeekDays appendFormat:@"weekdays[]=%@&",];
+            
+            [self.requestform setPostValue:[selectedStr stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding] forKey:[NSString stringWithFormat:@"location[%d]",k]];
+            k++;
+        }
+        
+        
+    }
+
+    
+    self.requestform.tag=5;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseEvents:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseCreateEvents:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseEventDetail:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==4)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseGuestEvents:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==5)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUpdateGuestUserLocation:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+
+}
+
+
+@end

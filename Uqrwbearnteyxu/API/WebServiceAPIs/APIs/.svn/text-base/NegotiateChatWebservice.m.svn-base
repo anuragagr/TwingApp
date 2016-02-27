@@ -1,0 +1,137 @@
+//
+//  NegotiateChatWebservice.m
+//  WCI
+//
+//  Created by Rahul N. Mane on 22/09/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "NegotiateChatWebservice.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+#define kTimeout 15
+
+#define chatHistoryURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/chat-history"]
+#define chatHistoryURLRequestID @"id"
+#define chatHistoryURLType @"type"
+#define chatHistoryURLCp @"cp"
+#define chatHistoryURLLimit @"limit"
+
+#define sendChatHistoryURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/discuss-send-message"]
+#define sendChatHistoryURLID @"id"
+#define sendChatHistoryURLType @"type"
+#define sendChatHistoryURLMessage @"discussMessage"
+
+@implementation NegotiateChatWebservice
+
++ (NegotiateChatWebservice *)sharedInstance
+{
+    // 1
+    static NegotiateChatWebservice *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[NegotiateChatWebservice alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+
+-(void)getChatHistoryOfRequest:(int)requestID andType:(NSString *)type andCp:(int)pageNo andPageLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:chatHistoryURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",requestID] forKey:chatHistoryURLRequestID];
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",type] forKey:chatHistoryURLType];
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:chatHistoryURLCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:chatHistoryURLLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)sendMessageToRequest:(int)requestID andType:(NSString *)type andMessage:(NSString *)strMessage{
+    
+    NSURL *url=[NSURL URLWithString:sendChatHistoryURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",requestID] forKey:sendChatHistoryURLID];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",type] forKey:sendChatHistoryURLType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",strMessage] forKey:sendChatHistoryURLMessage];
+    
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=4;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+  if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseChatHistory:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==4)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSendChatToRequest:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    
+   
+   
+    
+}
+
+
+
+@end

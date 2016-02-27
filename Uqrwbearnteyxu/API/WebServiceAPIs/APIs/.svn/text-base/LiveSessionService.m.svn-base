@@ -1,0 +1,178 @@
+//
+//  LiveSessionService.m
+//  WCI
+//
+//  Created by Rahul N. Mane on 20/07/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "LiveSessionService.h"
+#import "Constants.h"
+#import "CookieManager.h"
+#import "Parser.h"
+
+#define kTimeout 15
+
+
+#define liveSessionURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/messaging/ready-sessions"]
+
+#define sendMessageToLiveSessionURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/messaging/send-message"]
+#define sendMessageToLiveSessionURLPostSessionId @"sessionId"
+#define sendMessageToLiveSessionURLPostDeviceId @"device_id"
+#define sendMessageToLiveSessionURLPostMessage @"message"
+#define sendMessageToLiveSessionURLPostSign @"sign"
+#define sendMessageToLiveSessionURLPostUserID @"userid"
+
+#define liveSessionMessagesURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/messaging/list"]
+#define liveSessionMessagesURLPostCP @"cp"
+#define liveSessionMessagesURLPostLimit @"limit"
+#define liveSessionMessagesURLPostHash @"hash"
+
+@implementation LiveSessionService
+
+
+/**
+For singleton class
+ 
+*/
+
++ (LiveSessionService *)sharedInstance
+{
+    // 1
+    static LiveSessionService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[LiveSessionService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getLivesession{
+    
+    NSURL *url=[NSURL URLWithString:liveSessionURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+-(void)sendMessageToLivesessionWithSessionId:(NSString *)sessionId andDeviceId:(NSString *)deviceId andMessage:(NSString *)msg andFrom:(NSString *)userName andUserId:(int)userId{
+    
+    NSURL *url=[NSURL URLWithString:sendMessageToLiveSessionURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    [self.requestform setPostValue:sessionId forKey:sendMessageToLiveSessionURLPostSessionId];
+    [self.requestform setPostValue:deviceId forKey:sendMessageToLiveSessionURLPostDeviceId];
+    [self.requestform setPostValue:msg forKey:sendMessageToLiveSessionURLPostMessage];
+    [self.requestform setPostValue:userName forKey:sendMessageToLiveSessionURLPostSign];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:sendMessageToLiveSessionURLPostUserID];
+
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+-(void)getPreviousMessageForLiveSessionOnEventSlotHash:(NSString *)slothash andPageNo:(int)pageNo andLimit:(int)limit {
+    
+    NSURL *url=[NSURL URLWithString:liveSessionMessagesURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=3;
+    
+    [self.requestform setPostValue:slothash forKey:liveSessionMessagesURLPostHash];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:liveSessionMessagesURLPostCP];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:liveSessionMessagesURLPostLimit];
+
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseLiveSessions:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSendMessageToLiveSessions:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePreviousMessageOfLiveSessions:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+
+}
+
+
+@end

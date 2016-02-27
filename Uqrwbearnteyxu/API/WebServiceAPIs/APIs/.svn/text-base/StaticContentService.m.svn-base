@@ -1,0 +1,150 @@
+//
+//  StaticContent.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 28/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "StaticContentService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+
+#define kTimeout 15
+
+#define eventOnDemandURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/static/identificator/event_on_demand"]
+#define djOnDemandURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/static/identificator/dj_on_demand"]
+
+#define myPlatformOnDemandURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/static/identificator/my_platform"]
+
+
+#define entertainersURLPostGender @"gender"
+#define entertainersURLArtistType @"artist-type"
+
+
+@implementation StaticContentService
+
++ (StaticContentService *)sharedInstance
+{
+    
+    
+    // 1
+    static StaticContentService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[StaticContentService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getEvent_on_demandStaticContent{
+    NSURL *url=[NSURL URLWithString:eventOnDemandURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+   // [self.requestform setPostValue:[NSString stringWithFormat:@"%@",gender] forKey:entertainersURLPostGender];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)getDj_on_demandStaticContent{
+    NSURL *url=[NSURL URLWithString:djOnDemandURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+-(void)getMy_platformStaticContent{
+    
+    NSURL *url=[NSURL URLWithString:myPlatformOnDemandURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+   
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseStaticContent:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseStaticContent:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseStaticContent:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+
+
+}
+
+@end

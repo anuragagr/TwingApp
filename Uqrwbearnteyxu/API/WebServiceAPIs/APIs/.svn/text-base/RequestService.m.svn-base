@@ -1,0 +1,420 @@
+//
+//  RequestService.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 10/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "RequestService.h"
+#define kTimeout 15
+#import "Parser.h"
+#import "CookieManager.h"
+#import "RequestModel.h"
+#import "Constants.h"
+
+
+#define requestsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/calendar"]
+#define requestsURLPostMonth @"month"
+#define requestsURLPostYear @"year"
+
+#define requestsOnDateURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/list"]
+#define requestsOnDateURLPostDate @"date"
+#define requestsOnDateURLPostTimeZone @"timezone"
+
+#define requestsFutureURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/futurelist"]
+#define requestsFutureURLPageNo @"cp"
+#define requestsFutureURLLimit @"limit"
+
+#define requestsTodayURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/todaylist"]
+
+#define requestsNextWeekURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/thisweeklist"]
+
+#define requestsPackedURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/packs"]
+
+#define requestsAcceptURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/accept"]
+
+#define requestsAcceptPackURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/accept-pack"]
+
+#define requestsAcceptURLPostSlotId @"slotid"
+#define requestsAcceptURLPostPackid @"packid"
+#define requestsAcceptURLPostProposalId @"proposalid"
+
+
+
+#define requestsRejectURLForSlot [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/cancel"]
+
+#define requestsRejectURLForPacks [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/cancel-pack"]
+#define requestsRejectURLPostSlotId @"slotid"
+#define requestsRejectURLPostPackid @"packid"
+#define requestsRejectURLPostComment @"comment"
+
+
+
+@implementation RequestService
+
+/**
+ Explaination during Singleton
+ */
+
++ (RequestService *)sharedInstance
+{
+    // 1
+    static RequestService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[RequestService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getRequestonMonth:(int)month andYear:(int)year andTimeZone:(NSString *)timeZone{
+    
+    NSURL *url=[NSURL URLWithString:requestsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",month] forKey:requestsURLPostMonth];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",year] forKey:requestsURLPostYear];
+
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+-(void)getRequestonDate:(NSDate *)date andTimeZone:(NSString *)timeZone{
+    
+    if(timeZone==nil){
+        timeZone=@"";
+    }
+
+    
+    NSURL *url=[NSURL URLWithString:requestsOnDateURL];
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc]init];
+    [formatter setDateFormat:@"yyyy-MM-dd"];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",[formatter stringFromDate:date]] forKey:requestsOnDateURLPostDate];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",timeZone] forKey:requestsOnDateURLPostTimeZone];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+    
+}
+
+
+
+// request for future requests
+-(void)getFutureRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit{
+    
+    if(timeZone==nil){
+        timeZone=@"";
+    }
+    NSURL *url=[NSURL URLWithString:requestsFutureURL];
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc]init];
+    [formatter setDateFormat:@"yyyy-mm-dd"];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",timeZone] forKey:requestsOnDateURLPostTimeZone];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:requestsFutureURLPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:requestsFutureURLLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)getTodayRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit{
+    
+    if(timeZone==nil){
+        timeZone=@"";
+    }
+
+    
+    NSURL *url=[NSURL URLWithString:requestsTodayURL];
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc]init];
+    [formatter setDateFormat:@"yyyy-mm-dd"];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",timeZone] forKey:requestsOnDateURLPostTimeZone];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:requestsFutureURLPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:requestsFutureURLLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=4;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)getNextWeekRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit{
+    
+    if(timeZone==nil){
+        timeZone=@"";
+    }
+
+    NSURL *url=[NSURL URLWithString:requestsNextWeekURL];
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc]init];
+    [formatter setDateFormat:@"yyyy-mm-dd"];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",timeZone] forKey:requestsOnDateURLPostTimeZone];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:requestsFutureURLPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:requestsFutureURLLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=5;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)getPackedRequestslistOnTimeZone:(NSString *)timeZone andPageNo:(int)pageNo andLimit:(int)limit{
+    
+    if(timeZone==nil){
+        timeZone=@"";
+    }
+    
+    NSURL *url=[NSURL URLWithString:requestsPackedURL];
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc]init];
+    [formatter setDateFormat:@"yyyy-mm-dd"];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",timeZone] forKey:requestsOnDateURLPostTimeZone];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:requestsFutureURLPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:requestsFutureURLLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=6;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+-(void)acceptRequest:(RequestModel *)model isProvider:(BOOL)isProvider{
+    
+    if(!model.isPackedRequest){
+        NSURL *url=[NSURL URLWithString:requestsAcceptURL];
+        
+        self.requestform = [ASIFormDataRequest requestWithURL:url];
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.intID] forKey:requestsAcceptURLPostSlotId];
+    }
+    else{
+        NSURL *url=[NSURL URLWithString:requestsAcceptPackURL];
+        self.requestform = [ASIFormDataRequest requestWithURL:url];
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.intID] forKey:requestsAcceptURLPostPackid];
+    }
+    
+    /*
+    if(isProvider){
+         [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.providerProposalId] forKey:requestsAcceptURLPostProposalId];
+    }
+    else{
+          [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.customerProposalId] forKey:requestsAcceptURLPostProposalId];
+    }
+     */
+    
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.intProposalId] forKey:requestsAcceptURLPostProposalId];
+    
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=7;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)cancelRequest:(RequestModel *)model andMessage:(NSString *)strMessage isProvider:(BOOL)isProvider{
+    
+    if(!model.isPackedRequest){
+        NSURL *url=[NSURL URLWithString:requestsRejectURLForSlot];
+        
+        self.requestform = [ASIFormDataRequest requestWithURL:url];
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.intID] forKey:requestsRejectURLPostSlotId];
+    }
+    else{
+        NSURL *url=[NSURL URLWithString:requestsRejectURLForPacks];
+        self.requestform = [ASIFormDataRequest requestWithURL:url];
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%d",model.intID] forKey:requestsRejectURLPostPackid];
+    }
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",strMessage] forKey:requestsRejectURLPostComment];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=8;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseOnDateReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==3){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseFutureReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    } else if (theRequest.tag==4){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseTodayReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==5){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseNextWeekReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==6){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePackedReuests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==7){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAcceptReuest:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+
+    }
+    else if(theRequest.tag==8){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseCancelReuest:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+        
+    }
+}
+
+
+
+@end

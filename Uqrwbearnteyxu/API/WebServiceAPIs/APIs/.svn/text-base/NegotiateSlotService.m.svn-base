@@ -1,0 +1,244 @@
+//
+//  NegotiateSlotService.m
+//  WCI
+//
+//  Created by Rahul N. Mane on 20/08/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "NegotiateSlotService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "Constants.h"
+
+#define kTimeout 15
+
+
+#define pedingReuqestsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/pending-list"]
+#define pedingReuqestsURLPostCp @"cp"
+#define pedingReuqestsURLPostLimit @"limit"
+
+
+#define sendProposalReuqestsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/propose"]
+#define sendProposalReuqestsURLType @"type"
+#define sendProposalReuqestsURLID @"id"
+#define sendProposalReuqestsURLRate @"rateproposal"
+#define sendProposalReuqestsURLStartTime @"timestart"
+#define sendProposalReuqestsURLEndTime @"timeend"
+#define sendProposalReuqestsURLStartDate @"date_start"
+#define sendProposalReuqestsURLEndDate @"date_end"
+#define sendProposalReuqestsURLWeekDays @"weekdays"
+
+
+
+
+#define confirmedRequestURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/ondemand/confirmed-list"]
+#define confirmedRequestURLPostCp @"cp"
+#define confirmedRequestURLPostLimit @"limit"
+
+
+
+
+@implementation NegotiateSlotService
+
++ (NegotiateSlotService *)sharedInstance
+{
+    // 1
+    static NegotiateSlotService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[NegotiateSlotService alloc] init];
+    });
+    return _sharedInstance;
+}
+
+
+-(void)getPendingRequestsForCP:(int)pageNo andLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:pedingReuqestsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:pedingReuqestsURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:pedingReuqestsURLPostLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+
+-(void)getConfirmedRequestsForCP:(int)pageNo andLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:confirmedRequestURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:confirmedRequestURLPostCp];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:confirmedRequestURLPostLimit];
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=5;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)sendProposalToRequest:(int)requestID andTypeOfRequest:(NSString *)strType andRate:(float)rate andTimeStart:(NSString *)startTime andEndTime:(NSString *)endTime andStartDate:(NSString *)startDate andEndDate:(NSString *)endDate andWeekDays:(NSMutableArray *)arrayOfDays{
+    
+    NSURL *url=[NSURL URLWithString:sendProposalReuqestsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",requestID] forKey:sendProposalReuqestsURLID];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",strType] forKey:sendProposalReuqestsURLType];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%.2f",rate] forKey:sendProposalReuqestsURLRate];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",startTime] forKey:sendProposalReuqestsURLStartTime];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",endTime] forKey:sendProposalReuqestsURLEndTime];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",startDate] forKey:sendProposalReuqestsURLStartDate];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",endDate] forKey:sendProposalReuqestsURLEndDate];
+    
+    if(arrayOfDays.count>0){
+       int k=0;
+        for (NSString *selectedDay in arrayOfDays) {
+            [self.requestform setPostValue:[selectedDay stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding] forKey:[NSString stringWithFormat:@"weekdays[%d]",k]];
+            k++;
+        }
+    }
+    
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    self.requestform.tag=2;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+    
+}
+
+
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePendingRequests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSentProposal:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==3)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseChatHistory:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==4)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSendChatToRequest:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==5)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePendingRequests:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==6)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePendingRequestCount:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==7)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseConfirmPayment:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+
+}
+
+
+@end

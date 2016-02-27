@@ -1,0 +1,27 @@
+//
+//  StaticContent.h
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 28/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "WebServiceDelegate.h"
+#import "ASIFormDataRequest.h"
+
+@interface StaticContentService : NSObject
+
+@property(nonatomic,readwrite)int tag;
+
+@property(nonatomic,strong)id<WebServiceDelegate> delegate;
+@property (strong, nonatomic) ASIFormDataRequest *requestform;
+
++ (StaticContentService *)sharedInstance;
+
+-(void)getEvent_on_demandStaticContent;
+-(void)getDj_on_demandStaticContent;
+-(void)getMy_platformStaticContent;
+
+
+@end

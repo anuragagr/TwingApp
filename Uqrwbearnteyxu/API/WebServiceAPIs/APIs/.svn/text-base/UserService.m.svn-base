@@ -1,0 +1,963 @@
+//
+//  UserService.m
+//  WCI-Web
+//
+//  Created by Rahul N. Mane on 11/04/14.
+//  Copyright (c) 2014 Rahul N. Mane. All rights reserved.
+//
+
+#import "UserService.h"
+#import "Parser.h"
+#import "CookieManager.h"
+#import "AlbumModel.h"
+#import "PhotoModel.h"
+#import "VideoModel.h"
+#import "BlogModel.h"
+#import "TrackModel.h"
+#import "Constants.h"
+
+#import <AssetsLibrary/AssetsLibrary.h>
+
+
+#define kTimeout 15
+
+#define loginURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/login"]
+
+#define loginURLPostUserName @"username"
+#define loginURLPostpassword @"password"
+#define loginURLPostToken @"device_token"
+
+#define userProfileURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/profile/index"]
+#define userProfileURLPostUserId @"userid"
+
+#define logOutURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/index/logout"]
+
+#define userAlbumListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/album/list"]
+#define userAlbumListURLPostUserId @"userid"
+#define userAlbumListURLPostPageNo @"cp"
+#define userAlbumListURLPostLimit @"limit"
+
+#define userAddAlbumURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/album/create-album"]
+#define userAddAlbumURLPostAlbumName @"album_name"
+
+#define userDeleteAlbumURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/album/delete-album"]
+#define userDeleteAlbumURLPostAlbums @"albums"
+
+
+#define userAlbumPhotoListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/album/view"]
+#define userAlbumPhotoListURLPostAlbumId @"albumid"
+
+#define userAllVideoListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/video/list"]
+#define userAllVideoListURLPostisMobile @"mobile"
+#define userAllVideoListURLPostUserid @"userid"
+
+#define userVideoDetailURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/video/view"]
+#define userVideoDetailURLPostVideoid @"id"
+
+#define userPhotoDetailURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/photo/view"]
+#define userPhotoDetailURLPostPhotoid @"photoid"
+
+#define userAllAddPhotoListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/photo/add-photo"]
+#define userAllAddPhotoListURLPostGallaeryId @"albumid"
+#define userAllAddPhotoListURLPostFileData @"Filedata"
+
+#define userDeletePhotoURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/photo/delete-photo"]
+#define userDeletePhotoURLPostPhotos @"photos"
+
+#define userDeleteVideoURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/video/delete"]
+#define userDeleteVideoURLPostVideos @"videoids"
+
+#define userAllBlogsURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/blog-post/list"]
+#define userAllBlogsURLPostUserId @"userid"
+
+#define userDeleteBlogURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/blog-post/delete"]
+#define userDeleteBlogURLPostBlogIds @"postids"
+
+
+#define userBlogDetailURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/blog-post/view"]
+#define userBlogDetailURLPostBlogId @"postid"
+
+#define userAllCommentListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/blog-post/view"]
+#define userAllCommentListURLMediaID @"postid"
+
+#define userUploadVideoURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/video/add"]
+#define userUploadVideoURLPostVideoType @"video_type"
+#define userUploadVideoURLPostVideoAccessory @"video_accessory"
+#define userUploadVideoURLPostYoutubeURL @"youtube_url"
+#define userUploadVideoURLPostVideoTitle @"video_title"
+#define userUploadVideoURLPostFiledata @"Filedata"
+
+
+#define userAllTrackListURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/audio/track-list"]
+#define userAllTrackListURLUserId @"userid"
+
+#define userUploadTrackURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/audio/add"]
+#define userUploadTrackURLPostFileData @"Filedata"
+
+#define userDeleteTrackURL [NSString stringWithFormat:@"%@/%@",baseWebServerURL,@"phone-iapi/audio/delete"]
+#define userDeleteTrackURLPostTracksIds @"tracks"
+
+
+
+
+
+
+@implementation UserService
+
++ (UserService *)sharedInstance{
+    // 1
+    static UserService *_sharedInstance = nil;
+    
+    // 2
+    static dispatch_once_t oncePredicate;
+    
+    // 3
+    dispatch_once(&oncePredicate, ^{
+        _sharedInstance = [[UserService alloc] init];
+    });
+    return _sharedInstance;
+
+}
+
+-(void)loginUser:(NSString *)userName andPassword:(NSString *)password{
+    
+    NSURL *url=[NSURL URLWithString:loginURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",userName] forKey:loginURLPostUserName];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",password] forKey:loginURLPostpassword];
+    CookieManager *par=[[CookieManager alloc]init];
+
+    NSString *deviceToken=[par getDeviceToken];
+    if(deviceToken.length>0){
+        [self.requestform setPostValue:[NSString stringWithFormat:@"%@",deviceToken] forKey:loginURLPostToken];
+    }
+
+    self.requestform.tag=1;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)logOut:(int)userID{
+    NSURL *url=[NSURL URLWithString:logOutURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+   
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%@",[NSString stringWithFormat:@"%d",userID]] forKey:@"userid"];
+    
+    self.requestform.tag=3;
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+
+-(void)getUserProfile:(int)userID{
+    
+    NSURL *url=[NSURL URLWithString:userProfileURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userID] forKey:userProfileURLPostUserId];
+    
+    self.requestform.tag=2;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+
+-(void)getAllAlbumForUserid:(int)userID andPageNo:(int)pageNo andLimit:(int)limit{
+    NSURL *url=[NSURL URLWithString:userAlbumListURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userID] forKey:userAlbumListURLPostUserId];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:userAlbumListURLPostPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:userAlbumListURLPostLimit];
+    
+    self.requestform.tag=4;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)addAlbumWithName:(NSString *)name{
+    NSURL *url=[NSURL URLWithString:userAddAlbumURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:name forKey:userAddAlbumURLPostAlbumName];
+    
+    self.requestform.tag=5;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+-(void)deleteAlbumWithArrayAlbumModels:(NSMutableArray *)arrayOfAlbumModel{
+    
+    NSString *strAlbumIds=@"";
+    
+    for(int k=0;k<arrayOfAlbumModel.count;k++){
+        AlbumModel *model=[arrayOfAlbumModel objectAtIndex:k];
+        
+        if(k==0){
+            strAlbumIds=[NSString stringWithFormat:@"%d",model.intGalleryId];
+        }
+        else{
+            strAlbumIds= [strAlbumIds stringByAppendingString:[NSString stringWithFormat:@",%d",model.intGalleryId]];
+        }
+    }
+    
+    NSURL *url=[NSURL URLWithString:userDeleteAlbumURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:strAlbumIds forKey:userDeleteAlbumURLPostAlbums];
+    
+    self.requestform.tag=6;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+
+#pragma mark - Photos
+
+//Get album list
+-(void)getAllPhotosInAlbum:(int)albumId andPageNo:(int)pageNo andLimit:(int)limit forUserId:(int)userId{
+    NSURL *url=[NSURL URLWithString:userAlbumPhotoListURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",albumId] forKey:userAlbumPhotoListURLPostAlbumId];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:userAlbumListURLPostPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:userAlbumListURLPostLimit];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:userAlbumListURLPostUserId];
+    
+    
+    self.requestform.tag=7;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+
+-(void)getPhotoDetailbyUsingPhotoId:(int)photoId{
+    NSURL *url=[NSURL URLWithString:userPhotoDetailURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",photoId] forKey:userPhotoDetailURLPostPhotoid];
+    
+    self.requestform.tag=12;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+//Get album list
+-(void)uploadPhoto:(UIImage *)imgData andProgressView:(UIProgressView *)progresView andAlbumId:(int)albumId andImageName:(NSString *)imgName{
+    NSURL *url=[NSURL URLWithString:userAllAddPhotoListURL];
+    
+    NSData *imageData1=UIImageJPEGRepresentation(imgData, 1.0);
+    
+   
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    self.requestform.tag=8;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform  setData:imageData1 withFileName:imgName andContentType:@"application/octet-stream" forKey:userAllAddPhotoListURLPostFileData];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",albumId] forKey:userAllAddPhotoListURLPostGallaeryId];
+    
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:300];
+    [self.requestform startAsynchronous];
+    [self.requestform setUploadProgressDelegate:progresView];
+}
+
+/*
+-(void)uploadPhoto:(UIImage *)imgData ForBarAmbianceImageName:(NSString *)imgName{
+    NSURL *url=[NSURL URLWithString:@"http://barambiance.com/api/index.php?service=Service_Person&operation=uploadprofile"];
+    
+    NSData *imageData1=UIImageJPEGRepresentation(imgData, 1.0);
+    
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    self.requestform.tag=8;
+  //  CookieManager *p=[[CookieManager alloc]init];
+  //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    NSArray *keys = [NSArray arrayWithObjects:@"userid",@"usertoken",@"password",nil];
+    
+    NSArray *objects = [NSArray arrayWithObjects:@"387",@"6931726937316e7776736838683966726131676274376339653368336b6e3478",@"",nil];
+    
+    NSDictionary *jsonDictionary = [NSDictionary dictionaryWithObjects:objects forKeys:keys];
+
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsonDictionary options:0 error:&error];
+    
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+
+    [self.requestform setPostValue:jsonString forKey:@"params"];
+    
+    [self.requestform  setData:imageData1 withFileName:imgName andContentType:@"application/octet-stream" forKey:@"uplaoded"];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:300];
+    [self.requestform startAsynchronous];
+}
+ */
+
+
+
+
+-(void)deletePhotosWithArrayPhotoModels:(NSMutableArray *)arrayOfPhotoModel{
+    
+    NSString *strAlbumIds=@"";
+    
+    for(int k=0;k<arrayOfPhotoModel.count;k++){
+        PhotoModel *model=[arrayOfPhotoModel objectAtIndex:k];
+        
+        if(k==0){
+            strAlbumIds=[NSString stringWithFormat:@"%d",model.intPhotoId];
+        }
+        else{
+            strAlbumIds= [strAlbumIds stringByAppendingString:[NSString stringWithFormat:@",%d",model.intPhotoId]];
+        }
+    }
+    
+    NSURL *url=[NSURL URLWithString:userDeletePhotoURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:strAlbumIds forKey:userDeletePhotoURLPostPhotos];
+    
+    self.requestform.tag=13;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+-(void)deleteVideosWithArrayVideoModels:(NSMutableArray *)arrayOfVideoModel{
+    
+    NSString *strIds=@"";
+    
+    for(int k=0;k<arrayOfVideoModel.count;k++){
+        VideoModel *model=[arrayOfVideoModel objectAtIndex:k];
+        
+        if(k==0){
+            strIds=[NSString stringWithFormat:@"%d",model.intVideoId];
+        }
+        else{
+            strIds= [strIds stringByAppendingString:[NSString stringWithFormat:@",%d",model.intVideoId]];
+        }
+    }
+    
+    NSURL *url=[NSURL URLWithString:userDeleteVideoURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:strIds forKey:userDeleteVideoURLPostVideos];
+    
+    self.requestform.tag=14;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+
+
+#pragma  mark - Video
+
+-(void)getAllVideoListisForMobile:(int)isForMobile andUserId:(int)userID andPageNo:(int)pageNo andLimit:(int)limit{
+    NSURL *url=[NSURL URLWithString:userAllVideoListURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",isForMobile] forKey:userAllVideoListURLPostisMobile];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userID] forKey:userAllVideoListURLPostUserid];
+    
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:userAlbumListURLPostPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:userAlbumListURLPostLimit];
+    
+    
+    self.requestform.tag=10;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)getVideoDetailbyUsingVideoId:(int)videoId{
+    NSURL *url=[NSURL URLWithString:userVideoDetailURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",videoId] forKey:userVideoDetailURLPostVideoid];
+    
+    self.requestform.tag=11;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+}
+
+-(void)uploadVideo:(NSData *)videoData andProgressView:(UIProgressView *)progressView andVideoType:(int)videoType andVideoAccessory:(NSString *)strVideoaccessory andYoutubeURL:(NSString *)youtubeurl andVideoTitle:(NSString *)title{
+    
+    NSString *fileName=@"";
+    if(title.length==0){
+        long long milliseconds = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+        fileName=[NSString stringWithFormat:@"Video%lld.mp4",milliseconds];
+    }
+    else {
+        fileName =[NSString stringWithFormat:@"%@.mp4",title];
+    }
+    
+    
+    NSURL *url=[NSURL URLWithString:userUploadVideoURL];
+    
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    
+    
+    self.requestform.tag=18;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform  setData:videoData withFileName:fileName andContentType:@"application/octet-stream" forKey:userUploadVideoURLPostFiledata];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",videoType] forKey:userUploadVideoURLPostVideoType];
+    [self.requestform setPostValue:strVideoaccessory forKey:userUploadVideoURLPostVideoAccessory];
+    [self.requestform setPostValue:youtubeurl forKey:userUploadVideoURLPostYoutubeURL];
+    [self.requestform setPostValue:title forKey:userUploadVideoURLPostVideoTitle];
+    
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:300];
+    [self.requestform startAsynchronous];
+    [self.requestform setUploadProgressDelegate:progressView];
+    
+}
+
+#pragma mark - Blogs 
+
+-(void)getAllBlogsOnUserId:(int)userId andPageNo:(int)pageNo andLimit:(int)limit{
+    
+    NSURL *url=[NSURL URLWithString:userAllBlogsURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:userAllBlogsURLPostUserId];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",pageNo] forKey:userAlbumListURLPostPageNo];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",limit] forKey:userAlbumListURLPostLimit];
+  
+    
+    self.requestform.tag=15;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+-(void)deleteBlogsWithArrayBlogsModels:(NSMutableArray *)arrayOfBlogsModel{
+    
+    NSString *strIds=@"";
+    
+    for(int k=0;k<arrayOfBlogsModel.count;k++){
+        BlogModel *model=[arrayOfBlogsModel objectAtIndex:k];
+        
+        if(k==0){
+            strIds=[NSString stringWithFormat:@"%d",model.intBlogId];
+        }
+        else{
+            strIds= [strIds stringByAppendingString:[NSString stringWithFormat:@",%d",model.intBlogId]];
+        }
+    }
+    
+    NSURL *url=[NSURL URLWithString:userDeleteBlogURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:strIds forKey:userDeleteBlogURLPostBlogIds];
+    
+    self.requestform.tag=16;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+-(void)getBlogDetailsOnPostId:(int)postid andUserId:(int)userID{
+    NSURL *url=[NSURL URLWithString:userBlogDetailURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",postid] forKey:userBlogDetailURLPostBlogId];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userID] forKey:userAllVideoListURLPostUserid];
+
+    self.requestform.tag=17;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+
+}
+
+
+
+
+#pragma mark - Comment list
+-(void)getAllCommentListForMediaID:(int)mediaId{
+    NSURL *url=[NSURL URLWithString:userBlogDetailURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",mediaId] forKey:userBlogDetailURLPostBlogId];
+    
+    self.requestform.tag=9;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+#pragma mark - Tracks
+
+-(void)getAllTracksListOnUserId:(int)userId{
+    NSURL *url=[NSURL URLWithString:userAllTrackListURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:[NSString stringWithFormat:@"%d",userId] forKey:userAllTrackListURLUserId];
+    
+    self.requestform.tag=19;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+-(void)uploadTrack:(NSData *)audioData andTrackName:(NSString *)trackName andProgressView:(UIProgressView *)progressView{
+    NSURL *url=[NSURL URLWithString:userUploadTrackURL];
+    
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    
+    
+    self.requestform.tag=20;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform  setData:audioData withFileName:trackName andContentType:@"application/octet-stream" forKey:userUploadTrackURLPostFileData];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:300];
+    [self.requestform startAsynchronous];
+    [self.requestform setUploadProgressDelegate:progressView];
+}
+
+-(void)deleteTracksWithArrayTrackModels:(NSMutableArray *)arrayOfTracksModel{
+    
+    NSString *strIds=@"";
+    
+    for(int k=0;k<arrayOfTracksModel.count;k++){
+        TrackModel *model=[arrayOfTracksModel objectAtIndex:k];
+        
+        if(k==0){
+            strIds=[NSString stringWithFormat:@"%d",model.intMusicId];
+        }
+        else{
+            strIds= [strIds stringByAppendingString:[NSString stringWithFormat:@",%d",model.intMusicId]];
+        }
+    }
+    
+    NSURL *url=[NSURL URLWithString:userDeleteTrackURL];
+    
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    [self.requestform setPostValue:strIds forKey:userDeleteTrackURLPostTracksIds];
+    
+    self.requestform.tag=21;
+    CookieManager *p=[[CookieManager alloc]init];
+    [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:kTimeout];
+    [self.requestform startAsynchronous];
+    
+}
+
+
+
+
+-(void)cancelWebService{
+    [self.requestform cancel];
+}
+
+#pragma mark - Reponse delegate
+
+-(void)requestFinishedWithError:(ASIHTTPRequest *)theRequest
+{
+    NSError *error = [theRequest error];
+    [self.delegate request:self didFailWithError:error];
+}
+
+-(void)requestFinishedSuccessfully:(ASIHTTPRequest *)theRequest
+{
+    NSData *reponseData = [theRequest responseData];
+    if(theRequest.tag==1)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseLoginData:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if(theRequest.tag==2)
+    {
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUserProfile:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==3){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseLogOutdata:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==4){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUsersAlbumList:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==5){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAddAlbum:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==6){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDeleteAlbum:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==7){
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAlbumPhotoList:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==8){
+        // Image upload status
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUploadPhoto:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==9){
+        // Comments
+       
+        /*NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAllCommentList:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithString:array];
+        }
+         */
+    }
+    else if (theRequest.tag==10){
+        // videos
+        
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAllVideoList:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==11){
+        // videos
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseVideoDetails:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==12){
+        // Photo details
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parsePhotoDetails:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==13){
+        // Delete  photo
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDeletePhoto:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==14){
+        // Delete  videos
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDeleteVideos:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==15){
+        // All Blogs
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseAllblogs:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==16){
+        // Delete blogs
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDeleteBlogs:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==17){
+        // Delete blogs
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseBlogsDetails:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==18){
+        // Upload video
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUploadVideo:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==19){
+        // Track list
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseTrackList:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==20){
+        // Track upload
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseUploadTrack:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==21){
+        // Track Delete
+        NSError *error;
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseDeleteTrack:reponseData andError:&error];
+        if(error){
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    
+}
+
+
+
+@end
