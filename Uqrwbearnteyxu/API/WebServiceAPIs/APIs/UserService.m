@@ -41,16 +41,27 @@
 
 }
 
--(void)registerWithUserName:(NSString *)userName andPassword:(NSString *)password{
+-(void)registerWithUserName:(NSString *)userName andDateOfBirth:(NSString *)dateOfBirth andGender:(NSString *)gender andEmail:(NSString *)email andPassword:(NSString *)password andConfirmPassowrd:(NSString *)confirmPassowrd andUploadImage:(UIImage *)uploadImage andFirstName:(NSString *)firstName andLastName:(NSString *)lastName andResidence:(NSString *)residence andClientUserName:(NSString *)clientUserName andStatus:(NSString *)status{
     NSURL *url=[NSURL URLWithString:registerURL];
+    NSData *imageData1=UIImageJPEGRepresentation(uploadImage, 1.0);
     self.requestform = [ASIFormDataRequest requestWithURL:url];
     self.requestform.tag=0;
     //  CookieManager *p=[[CookieManager alloc]init];
     //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
-    
-    [self.requestform setPostValue:userName forKey:@"Email"];
+   
+    [self.requestform setPostValue:email forKey:@"Email"];
     [self.requestform setPostValue:password forKey:@"Password"];
-    [self.requestform setPostValue:password forKey:@"ConfirmPassword"];
+    [self.requestform setPostValue:confirmPassowrd forKey:@"ConfirmPassword"];
+    [self.requestform setPostValue:firstName forKey:@"FirstName"];
+    [self.requestform setPostValue:lastName forKey:@"LastName"];
+    [self.requestform setPostValue:dateOfBirth forKey:@"Birthdate"];
+    [self.requestform setPostValue:gender forKey:@"Gender"];
+    [self.requestform setPostValue:residence forKey:@"Residence"];
+    [self.requestform setPostValue:userName forKey:@"UserName"];
+    [self.requestform setPostValue:clientUserName forKey:@"ClientUserName"];
+    [self.requestform setPostValue:status forKey:@"UserStatus"];
+    
+    [self.requestform  setData:imageData1 withFileName:@"file.jpg" andContentType:@"application/octet-stream" forKey:@"UploadedImage"];
 
     
     [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
@@ -137,8 +148,79 @@
 }
 
 
+-(void)SportListdata {
+    NSURL *url=[NSURL URLWithString:[NSString stringWithFormat:@"%@",sportListURL]];
+    
+    self.request = [ASIHTTPRequest requestWithURL:url];
+    
+    self.request.tag=5;
+    //  CookieManager *p=[[CookieManager alloc]init];
+    //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+   // [self.request setRequestMethod:@"POST"];
+    [self.request setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.request setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.request setShouldContinueWhenAppEntersBackground:YES];
+    [self.request setDelegate:self];
+    [self.request setTimeOutSeconds:30];
+    [self.request startAsynchronous];
+}
 
+-(void)CheckEmailId:(NSString *)email
+{
+    NSURL *url=[NSURL URLWithString:[NSString stringWithFormat:@"%@Email=%@",checkEmailURL,email]];
+    
+    self.request = [ASIHTTPRequest requestWithURL:url];
+    
+    self.request.tag=4;
+    //  CookieManager *p=[[CookieManager alloc]init];
+    //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    [self.request setRequestMethod:@"POST"];
+    [self.request setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.request setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.request setShouldContinueWhenAppEntersBackground:YES];
+    [self.request setDelegate:self];
+    [self.request setTimeOutSeconds:30];
+    [self.request startAsynchronous];
+}
 
+-(void)checkUserName:(NSString *)username;
+{
+    NSURL *url=[NSURL URLWithString:[NSString stringWithFormat:@"%@ClientUserName=%@",checkUserNameUrl,username]];
+    
+    self.request = [ASIHTTPRequest requestWithURL:url];
+    
+    self.request.tag=6;
+    //  CookieManager *p=[[CookieManager alloc]init];
+    //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    [self.request setRequestMethod:@"POST"];
+    [self.request setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.request setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.request setShouldContinueWhenAppEntersBackground:YES];
+    [self.request setDelegate:self];
+    [self.request setTimeOutSeconds:30];
+    [self.request startAsynchronous];
+}
+-(void)sportListSendData:(NSString *)userId andSportId:(NSString *)sportId andCreatedDate:(NSString *)createdDate andUpdatedDate:(NSString *)updatedDate;
+{
+    NSURL *url=[NSURL URLWithString:sportListSendURL];
+    self.requestform = [ASIFormDataRequest requestWithURL:url];
+    self.requestform.tag=7;
+    //  CookieManager *p=[[CookieManager alloc]init];
+    //  [self.requestform setRequestCookies:[NSMutableArray arrayWithObject:[p getCookie]]];
+    
+    [self.requestform setPostValue:userId forKey:@"UserID"];
+    [self.requestform setPostValue:sportId forKey:@"SportId"];
+    [self.requestform setPostValue:createdDate forKey:@"CreatedDate"];
+    [self.requestform setPostValue:updatedDate forKey:@"UpdatedDate"];
+    
+    [self.requestform setDidFailSelector:@selector(requestFinishedWithError:)];
+    [self.requestform setDidFinishSelector:@selector(requestFinishedSuccessfully:)];
+    [self.requestform setShouldContinueWhenAppEntersBackground:YES];
+    [self.requestform setDelegate:self];
+    [self.requestform setTimeOutSeconds:30];
+    [self.requestform startAsynchronous];
+    
+}
 
 
 -(void)cancelWebService{
@@ -213,6 +295,58 @@
         
         Parser *parser=[[Parser alloc]init];
         NSMutableArray *array=[parser parseMakeProfile:reponseData andError:&error];
+        if(error){
+            
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==4){
+        NSError *error;
+        
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseCheckEmail:reponseData andError:&error];
+        if(error){
+            
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==5){
+        NSError *error;
+        
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseSportListData:reponseData andError:&error];
+        if(error){
+            
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==6){
+        NSError *error;
+        
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseCheckUserName:reponseData andError:&error];
+        if(error){
+            
+            [self.delegate request:self didFailWithError:error];
+        }
+        else{
+            [self.delegate request:self didSucceedWithArray:array];
+        }
+    }
+    else if (theRequest.tag==7){
+        NSError *error;
+        
+        Parser *parser=[[Parser alloc]init];
+        NSMutableArray *array=[parser parseCheckUserName:reponseData andError:&error];
         if(error){
             
             [self.delegate request:self didFailWithError:error];

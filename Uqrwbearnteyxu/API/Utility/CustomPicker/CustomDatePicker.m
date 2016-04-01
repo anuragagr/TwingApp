@@ -167,7 +167,7 @@
         
         label= [[UILabel alloc] initWithFrame:CGRectMake(0.0f, 0.0f, [pickerView rowSizeForComponent:component].width, [pickerView rowSizeForComponent:component].height)];
         label.textAlignment = NSTextAlignmentCenter;
-        label.textColor = [UIColor whiteColor];
+        label.textColor = [UIColor blackColor];
         label.text = strText;
         
     }
@@ -203,7 +203,11 @@
     if(self.delegate && [self.delegate respondsToSelector:@selector(customDatePicker:withSelectedDate:)]){
         [self.delegate customDatePicker:self withSelectedDate:[formatter dateFromString:strDateToSend]];
     }
-  
+//    if(self.delegate && [self.delegate respondsToSelector:@selector(reloadPickerView:withSelectedDate:)]){
+//        [self.delegate reloadPickerView:self withSelectedDate:[formatter dateFromString:strDateToSend]];
+//        [pickerView selectRow:<#(NSInteger)#> inComponent:<#(NSInteger)#> animated:<#(BOOL)#>]
+//    }
+ 
     
     if(component == 1){
         NSString *strDate = [NSString stringWithFormat:@"%@/%@/%@",@"1",selectedMonth,selectedYear];
@@ -226,7 +230,36 @@
     }
     
 }
-
+-(void)reloadPickerViewWithSelectedDate:(NSString *)stringDate
+{
+    NSArray *dateStringArray=[stringDate componentsSeparatedByString:@"/"];
+    NSSet *setForDay = [NSSet setWithArray:[dateStringArray objectAtIndex:0]];
+    NSIndexSet *matchingIndexesForDates = [arrayOfDates indexesOfObjectsPassingTest:^BOOL(NSString *obj, NSUInteger idx, BOOL *stop) {
+        return [setForDay containsObject:obj];
+    }];
+    [matchingIndexesForDates enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL *stop) {
+        NSLog(@"%ld", (long)idx);
+        [self.pickerViewDate selectRow:idx inComponent:0 animated:YES];
+    }];
+    NSSet *setForMonth = [NSSet setWithArray:[dateStringArray objectAtIndex:1]];
+    NSIndexSet *matchingIndexesForMonths = [arrayOfMonths indexesOfObjectsPassingTest:^BOOL(NSString *obj, NSUInteger idx, BOOL *stop) {
+        return [setForMonth containsObject:obj];
+    }];
+    [matchingIndexesForMonths enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL *stop) {
+        NSLog(@"%ld", (long)idx);
+        [self.pickerViewDate selectRow:idx inComponent:1 animated:YES];
+    }];
+    NSSet *setForYears = [NSSet setWithArray:[dateStringArray objectAtIndex:2]];
+    NSIndexSet *matchingIndexesForYears = [arrayOfYears indexesOfObjectsPassingTest:^BOOL(NSString *obj, NSUInteger idx, BOOL *stop) {
+        return [setForYears containsObject:obj];
+    }];
+    [matchingIndexesForYears enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL *stop) {
+        NSLog(@"%ld", (long)idx);
+        [self.pickerViewDate selectRow:idx inComponent:2 animated:YES];
+    }];
+    
+    
+}
 
 -(NSDate *)getPreviousYearDate:(NSDate *)sinceDate{
     NSCalendar *gregorian1 = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];

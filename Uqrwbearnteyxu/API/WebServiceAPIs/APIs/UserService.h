@@ -16,17 +16,20 @@
 @property(nonatomic,readwrite)int tag;
 @property(nonatomic,strong)id<WebServiceDelegate> delegate;
 @property (strong, nonatomic) ASIFormDataRequest *requestform;
+@property (strong, nonatomic) ASIHTTPRequest *request;
 
 
 //shared instance
 + (UserService *)sharedInstance;
 
--(void)registerWithUserName:(NSString *)userName andPassword:(NSString *)password;
+-(void)registerWithUserName:(NSString *)userName andDateOfBirth:(NSString *)dateOfBirth andGender:(NSString *)gender andEmail:(NSString *)email andPassword:(NSString *)password andConfirmPassowrd:(NSString *)confirmPassowrd andUploadImage:(UIImage *)uploadImage andFirstName:(NSString *)firstName andLastName:(NSString *)lastName andResidence:(NSString *)residence andClientUserName:(NSString *)clientUserName andStatus:(NSString *)status ;
 -(void)loginWithUserName:(NSString *)userName andPassword:(NSString *)password token:(NSString *)deviceToken;
 -(void)forgotPasswordWithEmailID:(NSString *)email;
 
 -(void)makeProfileWithUserModel:(UserModel *)userModel;
-
-
+-(void)SportListdata;
+-(void)CheckEmailId:(NSString *)email;
+-(void)checkUserName:(NSString *)username;
+-(void)sportListSendData:(NSString *)userId andSportId:(NSString *)sportId andCreatedDate:(NSString *)createdDate andUpdatedDate:(NSString *)updatedDate;
     
 @end

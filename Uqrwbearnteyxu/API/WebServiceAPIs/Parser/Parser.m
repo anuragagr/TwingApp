@@ -33,7 +33,9 @@
             NSLog(@"Json : %@",json);
         if([[json valueForKey:@"Status"]integerValue]==1){
             arrayToReturn=[[NSMutableArray alloc]init];
-            NSDictionary *dict=[json valueForKey:@"data"];
+            NSDictionary *dict=[json valueForKey:@"Data"];
+            arrayToReturn = [dict objectForKey:@"UserId"];
+           
             
             return arrayToReturn;
         }
@@ -572,6 +574,155 @@ model.strClientUserName = [dict valueForKey:@"ClientUserName"];
     return arrayToReturn;
     
 }
+-(NSMutableArray *)parseCheckEmail:(NSData *)responseData andError:(NSError **)error
+{
+    NSMutableArray *arrayToReturn;
+    
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    
+    if(!errors){
+        
+        NSLog(@"Json : %@",json);
+        if([[json valueForKey:@"Status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            //NSDictionary *errorDict=[json valueForKey:@"ErrorMessage"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[json valueForKey:@"ErrorMessage"] forKey:NSLocalizedDescriptionKey];
+            int ErroCode =[[json valueForKey:@"ErrorCode"] intValue];
+            *error = [NSError errorWithDomain:ErrorDomain code:ErroCode userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:ErrorDomain code:122 userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
 
+-(NSMutableArray *)parseSportListData:(NSData *)resposeData andError:(NSError **)error
+{
+    NSMutableArray *arrayToReturn;
+
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:resposeData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    
+    if(!errors){
+        
+        NSLog(@"Json : %@",json);
+        if([[json valueForKey:@"Status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"Data"];
+            NSMutableArray *sportArray = [dict valueForKey:@"Sports"];
+            [arrayToReturn addObjectsFromArray:sportArray];
+            
+            return arrayToReturn;
+        }
+        else{
+            //NSDictionary *errorDict=[json valueForKey:@"ErrorMessage"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[json valueForKey:@"ErrorMessage"] forKey:NSLocalizedDescriptionKey];
+            int ErroCode =[[json valueForKey:@"ErrorCode"] intValue];
+            *error = [NSError errorWithDomain:ErrorDomain code:ErroCode userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:ErrorDomain code:122 userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+-(NSMutableArray *)parseCheckUserName:(NSData *)responseData andError:(NSError **)error
+{
+    NSMutableArray *arrayToReturn;
+    
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:responseData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    
+    if(!errors){
+        
+        NSLog(@"Json : %@",json);
+        if([[json valueForKey:@"Status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            //NSDictionary *errorDict=[json valueForKey:@"ErrorMessage"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[json valueForKey:@"ErrorMessage"] forKey:NSLocalizedDescriptionKey];
+            int ErroCode =[[json valueForKey:@"ErrorCode"] intValue];
+            *error = [NSError errorWithDomain:ErrorDomain code:ErroCode userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:ErrorDomain code:122 userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+}
+
+-(NSMutableArray *)parseSportListSendData:(NSData *)resposeData andError:(NSError **)error
+{
+    NSMutableArray *arrayToReturn;
+    
+    NSError *errors;
+    NSDictionary* json = [NSJSONSerialization JSONObjectWithData:resposeData //1
+                                                         options:NSJSONReadingAllowFragments error:&errors];
+    
+    if(!errors){
+        
+        NSLog(@"Json : %@",json);
+        if([[json valueForKey:@"Status"]integerValue]==1){
+            arrayToReturn=[[NSMutableArray alloc]init];
+            NSDictionary *dict=[json valueForKey:@"data"];
+            
+            return arrayToReturn;
+        }
+        else{
+            //NSDictionary *errorDict=[json valueForKey:@"ErrorMessage"];
+            
+            NSMutableDictionary* details = [NSMutableDictionary dictionary];
+            [details setValue:[json valueForKey:@"ErrorMessage"] forKey:NSLocalizedDescriptionKey];
+            int ErroCode =[[json valueForKey:@"ErrorCode"] intValue];
+            *error = [NSError errorWithDomain:ErrorDomain code:ErroCode userInfo:details];
+            return nil;
+            
+        }
+    }
+    else{
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:jsonError forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:ErrorDomain code:122 userInfo:details];
+        return nil;
+    }
+    return arrayToReturn;
+
+    
+}
 
 @end

@@ -28,4 +28,12 @@
 
 #define radarURL [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/Radar/UserRadar"]
 
+#define sportListURL [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/Sports"]
+#define checkEmailURL [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/Account/CheckAccount?"]
+#define checkUserNameUrl [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/Account/CheckUsername?"]
+
+#define sportListSendURL [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/UserSports"]
+
+#define facebookBearToken [NSString stringWithFormat:@"%@/%@",baseURL,@"/api/UserSports"]
+
 #endif /* WebConstants_h */

@@ -23,4 +23,9 @@
 
 -(NSMutableArray *)parseRadarListData:(NSData *)responseData andError:(NSError **)error;
 
+-(NSMutableArray *)parseCheckEmail:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseSportListData:(NSData *)resposeData andError:(NSError **)error;
+-(NSMutableArray *)parseCheckUserName:(NSData *)responseData andError:(NSError **)error;
+-(NSMutableArray *)parseSportListSendData:(NSData *)resposeData andError:(NSError **)error;
+
 @end

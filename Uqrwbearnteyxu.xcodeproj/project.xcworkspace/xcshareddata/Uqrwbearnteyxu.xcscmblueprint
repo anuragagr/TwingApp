@@ -1,0 +1,42 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "378E33FDC6449F76C7C87CF7DFDD6AEF4FBA8C5F",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++7585" : {
+
+    },
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++1162" : {
+
+    }
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++1162" : 0,
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++7585" : 0,
+    "378E33FDC6449F76C7C87CF7DFDD6AEF4FBA8C5F" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "CFC32DEB-65FB-451F-870D-21E9485AA382",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++1162" : "TwingMaster\/Uqrwbearnteyxu\/API\/Utility\/TableViewPullView\/",
+    "f005f23d-a0ec-7944-a1b2-f661391696e3++7585" : "TwingMaster\/Uqrwbearnteyxu\/API\/Utility\/BlockOperationWithIdentifire\/",
+    "378E33FDC6449F76C7C87CF7DFDD6AEF4FBA8C5F" : "TwingMaster\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "Uqrwbearnteyxu",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "Uqrwbearnteyxu.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/anuragagr\/TwingApp.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "378E33FDC6449F76C7C87CF7DFDD6AEF4FBA8C5F"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/192.168.1.227\/svn\/WCLMobileAPP",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Subversion",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "f005f23d-a0ec-7944-a1b2-f661391696e3++1162"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/192.168.1.227\/svn\/WCLMobileAPP",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Subversion",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "f005f23d-a0ec-7944-a1b2-f661391696e3++7585"
+    }
+  ]
+}
